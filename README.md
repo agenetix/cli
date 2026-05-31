@@ -109,6 +109,20 @@ Creating or updating a hosted server starts the managed edge publish automatical
 
 When creating or updating from `--openapi-file`, the CLI reads the local JSON/YAML file, sends the spec contents to MCP Stack, and records the source as an upload. The file does not need to be publicly reachable. Use `servers update --openapi-file` whenever the local spec changes.
 
+## Hosted Custom Domains
+
+Hosted servers can expose one customer-owned subdomain such as `mcp.example.com`. MCP Stack keeps the canonical platform MCP URL as a fallback and only prefers the custom URL after DNS, Azure Front Door managed TLS, and routing are active.
+
+```bash
+mcpstack servers custom-domain validate <server-id> --hostname mcp.example.com --json
+mcpstack servers custom-domain confirm-ownership <server-id> --json
+mcpstack servers custom-domain get <server-id> --json
+mcpstack servers custom-domain finalize <server-id> --json
+mcpstack smoke tools-list <server-id>
+```
+
+The `validate` response returns the ownership TXT record to create at your DNS provider. After it resolves, run `confirm-ownership`; MCP Stack then prepares the routing CNAME and Azure validation TXT records. Add those records, then run `finalize` to activate routing and managed TLS. `delete --yes` removes the custom domain from the server.
+
 ## Configuration
 
 Global flags:
