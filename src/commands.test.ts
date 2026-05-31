@@ -138,13 +138,30 @@ describe("mcpstack command surface", () => {
 
     const agents = program.commands.find((command) => command.name() === "agents");
     const budget = agents?.commands.find((command) => command.name() === "budget");
+    const defaults = budget?.commands.find((command) => command.name() === "defaults");
+    const set = budget?.commands.find((command) => command.name() === "set");
+    const get = budget?.commands.find((command) => command.name() === "get");
+    const deleteCommand = budget?.commands.find((command) => command.name() === "delete");
 
+    expect(budget?.description()).toBe("Manage embedded user budgets");
     expect(commandNames(budget!)).toEqual(expect.arrayContaining([
       "defaults",
       "set",
       "get",
       "delete",
     ]));
+    expect(defaults?.description()).toBe("Set the agent pool and default user budget policy");
+    expect(defaults?.options.some((option) => option.long === "--monthly-usd")).toBe(true);
+    expect(defaults?.options.some((option) => option.long === "--default-user-usd")).toBe(true);
+    expect(defaults?.options.some((option) => option.long === "--anonymous-usd")).toBe(true);
+    expect(set?.description()).toBe("Set one external user's monthly budget");
+    expect(set?.options.some((option) => option.long === "--user")).toBe(true);
+    expect(set?.options.some((option) => option.long === "--monthly-usd")).toBe(true);
+    expect(get?.description()).toBe("Show one external user's assigned and effective budget");
+    expect(get?.options.some((option) => option.long === "--user")).toBe(true);
+    expect(deleteCommand?.description()).toBe("Remove a user's explicit budget so the agent default applies");
+    expect(deleteCommand?.options.some((option) => option.long === "--user")).toBe(true);
+    expect(deleteCommand?.options.some((option) => option.long === "--yes")).toBe(true);
   });
 
   it("derives server identity from an OpenAPI file", () => {
