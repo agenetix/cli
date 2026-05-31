@@ -8,6 +8,8 @@
 npm i -g @mcpstack/cli
 ```
 
+Existing `@emcy/cli` installs remain supported as a compatibility package, but new projects should install `@mcpstack/cli`.
+
 For local development:
 
 ```bash
@@ -98,6 +100,8 @@ mcpstack servers custom-domain get <server-id> --json
 mcpstack agents list
 mcpstack agents budget defaults <agent-id> --monthly-usd 10000 --default-user-usd 5 --json
 mcpstack agents budget set <agent-id> --user customer_abc --monthly-usd 5 --json
+mcpstack agents budget get <agent-id> --user customer_abc --json
+mcpstack agents budget delete <agent-id> --user customer_abc --yes
 mcpstack agents chat <agent-id> --message "Summarize production health"
 ```
 

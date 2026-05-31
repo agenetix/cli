@@ -35,3 +35,11 @@ jobs:
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Prepare legacy @emcy/cli package
+        run: npm run prepare:legacy-emcy-cli
+
+      - name: Publish legacy @emcy/cli to npm
+        run: npm publish .tmp/emcy-cli-package --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

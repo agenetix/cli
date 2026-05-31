@@ -729,12 +729,13 @@ function registerAgentCommands(program: Command): void {
   const budget = agents.command("budget").description("Manage embedded user budgets");
   budget.command("defaults")
     .argument("<agentId>")
-    .option("--monthly-usd <amount>")
-    .option("--default-user-usd <amount>")
-    .option("--anonymous-usd <amount>")
+    .option("--monthly-usd <amount>", "Agent pool monthly USD cap")
+    .option("--default-user-usd <amount>", "Default monthly USD cap for newly seen identified users")
+    .option("--anonymous-usd <amount>", "Monthly USD cap for anonymous embed usage")
     .option("--currency <currency>", "Currency", "USD")
     .option("--enforcement-mode <mode>", "Enforcement mode", "hard_block")
-    .option("--disable")
+    .option("--disable", "Disable the agent budget policy")
+    .description("Set the agent pool and default user budget policy")
     .action(runClientWithOrg(async (client, options, orgId, agentId: string) => {
       const enabled = !options.disable;
       if (enabled && options.monthlyUsd === undefined) {
@@ -745,9 +746,9 @@ function registerAgentCommands(program: Command): void {
         method: "PATCH",
         body: omitUndefined({
           enabled,
-          monthlyBudgetUsd: enabled ? parseMoney(options.monthlyUsd, "--monthly-usd") : 0,
-          defaultUserBudgetUsd: parseOptionalMoney(options.defaultUserUsd, "--default-user-usd"),
-          anonymousMonthlyBudgetUsd: parseOptionalMoney(options.anonymousUsd, "--anonymous-usd"),
+          monthlyBudgetUsd: enabled ? parsePositiveMoney(options.monthlyUsd, "--monthly-usd") : 0,
+          defaultUserBudgetUsd: parseOptionalPositiveMoney(options.defaultUserUsd, "--default-user-usd"),
+          anonymousMonthlyBudgetUsd: parseOptionalPositiveMoney(options.anonymousUsd, "--anonymous-usd"),
           currency: options.currency,
           enforcementMode: options.enforcementMode,
         }),
@@ -755,8 +756,9 @@ function registerAgentCommands(program: Command): void {
     }));
   budget.command("set")
     .argument("<agentId>")
-    .requiredOption("--user <externalUserId>")
-    .requiredOption("--monthly-usd <amount>")
+    .requiredOption("--user <externalUserId>", "External user id passed to the agent SDK")
+    .requiredOption("--monthly-usd <amount>", "Per-user monthly USD cap")
+    .description("Set one external user's monthly budget")
     .action(runClientWithOrg(async (client, options, orgId, agentId: string) => {
       printData(await client.request(`/api/v1/organizations/${orgId}/agents/${agentId}/external-users/${encodeURIComponent(options.user)}/budget`, {
         method: "PUT",
@@ -765,14 +767,16 @@ function registerAgentCommands(program: Command): void {
     }));
   budget.command("get")
     .argument("<agentId>")
-    .requiredOption("--user <externalUserId>")
+    .requiredOption("--user <externalUserId>", "External user id passed to the agent SDK")
+    .description("Show one external user's assigned and effective budget")
     .action(runClientWithOrg(async (client, options, orgId, agentId: string) => {
       printData(await client.request(`/api/v1/organizations/${orgId}/agents/${agentId}/external-users/${encodeURIComponent(options.user)}/budget`), options);
     }));
   budget.command("delete")
     .argument("<agentId>")
-    .requiredOption("--user <externalUserId>")
-    .option("--yes")
+    .requiredOption("--user <externalUserId>", "External user id passed to the agent SDK")
+    .option("--yes", "Confirm deletion")
+    .description("Remove a user's explicit budget so the agent default applies")
     .action(runClientWithOrg(async (client, options, orgId, agentId: string) => {
       await requireConfirmation(options, `Delete budget for user '${options.user}' on agent '${agentId}'?`);
       await client.request(`/api/v1/organizations/${orgId}/agents/${agentId}/external-users/${encodeURIComponent(options.user)}/budget`, {
@@ -980,14 +984,27 @@ function splitList(value: string): string[] {
   return value.split(/[,\s]+/).map((item) => item.trim()).filter(Boolean);
 }
 
-function parseOptionalMoney(value: string | undefined, flag: string): number | undefined {
-  return value === undefined ? undefined : parseMoney(value, flag);
+function parseOptionalPositiveMoney(value: string | undefined, flag: string): number | undefined {
+  return value === undefined ? undefined : parsePositiveMoney(value, flag);
+}
+
+function parsePositiveMoney(value: string | undefined, flag: string): number {
+  const parsed = parseMoney(value, flag);
+  if (parsed <= 0) {
+    throw new Error(`${flag} must be greater than zero.`);
+  }
+
+  return parsed;
 }
 
 function parseMoney(value: string | undefined, flag: string): number {
+  if (value === undefined || !/^\d+(?:\.\d{1,2})?$/.test(value)) {
+    throw new Error(`${flag} must be a USD amount with at most 2 decimal places.`);
+  }
+
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed < 0) {
-    throw new Error(`${flag} must be a non-negative number.`);
+    throw new Error(`${flag} must be greater than or equal to zero.`);
   }
 
   return parsed;
