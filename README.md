@@ -97,11 +97,6 @@ mcpstack servers delete <server-id> --yes
 mcpstack servers custom-domain validate <server-id> --hostname mcp.example.com --json
 mcpstack servers custom-domain get <server-id> --json
 
-mcpstack servers custom-domain validate <server-id> --hostname mcp.example.com
-mcpstack servers custom-domain confirm-ownership <server-id>
-mcpstack servers custom-domain get <server-id>
-mcpstack servers custom-domain finalize <server-id>
-
 mcpstack agents list
 mcpstack agents budget defaults <agent-id> --monthly-usd 10000 --default-user-usd 5 --json
 mcpstack agents budget set <agent-id> --user customer_abc --monthly-usd 5 --json
