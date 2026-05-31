@@ -1,6 +1,6 @@
 {
-  "name": "@emcy/cli",
-  "version": "0.1.4",
+  "name": "@mcpstack/cli",
+  "version": "1.0.2",
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
@@ -8,7 +8,7 @@
   "description": "MCP Stack command-line interface for managing organizations, MCP servers, gateways, and agents.",
   "type": "module",
   "bin": {
-    "mcpstack": "./dist/index.js"
+    "mcpstack": "dist/index.js"
   },
   "files": [
     "dist",
@@ -18,22 +18,22 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
+    "prepare:legacy-emcy-cli": "node scripts/prepare-legacy-emcy-cli-package.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "prepublishOnly": "npm run build && npm test"
   },
   "keywords": [
     "mcpstack",
-    "emcy",
     "mcp",
     "cli",
     "oauth"
   ],
-  "author": "Emcy <hello@emcy.ai>",
+  "author": "MCP Stack <hello@mcpstack.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/emcy-ai/cli.git"
+    "url": "git+https://github.com/emcy-ai/mcpstack-cli.git"
   },
   "engines": {
     "node": ">=20.0.0"

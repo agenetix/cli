@@ -155,7 +155,7 @@ function resolveDoctorTarget(options: GatewayDoctorOptions): {
     throw new Error("Provide either <publicId> or --url for gateway-public doctor.");
   }
 
-  const apiBaseUrl = trimTrailingSlash(options.apiBaseUrl || "https://app.emcy.ai");
+  const apiBaseUrl = trimTrailingSlash(options.apiBaseUrl || "https://mcpstack.com");
   const base = `${apiBaseUrl}/api/v1/gateway/${encodeURIComponent(options.publicId)}`;
   return {
     mcpUrl: `${base}/mcp`,
@@ -280,7 +280,7 @@ async function postToolsList(fetchImpl: FetchLike, url: string, bearer?: string)
   return readHttpResult(url, await fetchImpl(url, {
     method: "POST",
     headers,
-    body: JSON.stringify({ jsonrpc: "2.0", id: "emcy-doctor-tools-list", method: "tools/list", params: {} }),
+    body: JSON.stringify({ jsonrpc: "2.0", id: "mcpstack-doctor-tools-list", method: "tools/list", params: {} }),
   }));
 }
 

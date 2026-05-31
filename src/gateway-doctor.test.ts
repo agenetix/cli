@@ -41,7 +41,7 @@ function baseRoutes(toolCount = 2): RouteMap {
       status: 200,
       body: {
         jsonrpc: "2.0",
-        id: "emcy-doctor-tools-list",
+        id: "mcpstack-doctor-tools-list",
         result: {
           tools: Array.from({ length: toolCount }, (_, index) => ({
             name: `tool_${index}`,

@@ -64,6 +64,32 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Set legacy @emcy/cli preview version
+        id: legacy_preview
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          node <<'NODE' >> "$GITHUB_OUTPUT"
+          const fs = require("node:fs");
+          const pkg = JSON.parse(fs.readFileSync("compat/emcy-cli/package.json", "utf8"));
+          const baseVersion = String(pkg.version).split("-")[0];
+          const shortSha = process.env.GITHUB_SHA.slice(0, 12).replace(/[^0-9A-Za-z-]/g, "");
+          const version = `${baseVersion}-pr.${process.env.PR_NUMBER}.${shortSha}.${process.env.GITHUB_RUN_NUMBER}.${process.env.GITHUB_RUN_ATTEMPT}`;
+          const tag = `pr-${process.env.PR_NUMBER}`;
+          const packageUrl = `https://www.npmjs.com/package/${pkg.name}/v/${version}`;
+          console.log(`package_name=${pkg.name}`);
+          console.log(`version=${version}`);
+          console.log(`tag=${tag}`);
+          console.log(`package_ref=${pkg.name}@${version}`);
+          console.log(`tag_ref=${pkg.name}@${tag}`);
+          console.log(`package_url=${packageUrl}`);
+          NODE
+
+      - name: Prepare legacy @emcy/cli preview package
+        env:
+          LEGACY_EMCY_CLI_VERSION: ${{ steps.legacy_preview.outputs.version }}
+        run: npm run prepare:legacy-emcy-cli
+
       - name: Publish preview package
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -83,6 +109,25 @@ jobs:
           unset NODE_AUTH_TOKEN
           npm publish --access public --tag "${{ steps.preview.outputs.tag }}"
 
+      - name: Publish legacy @emcy/cli preview package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [[ -n "${NODE_AUTH_TOKEN:-}" ]]; then
+            NPM_TOKEN_USERCONFIG="$(mktemp)"
+            printf '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}\nregistry=https://registry.npmjs.org/\n' > "$NPM_TOKEN_USERCONFIG"
+            export NPM_CONFIG_USERCONFIG="$NPM_TOKEN_USERCONFIG"
+            if npm publish .tmp/emcy-cli-package --provenance --access public --tag "${{ steps.legacy_preview.outputs.tag }}"; then
+              exit 0
+            fi
+            echo "::warning::Token-based npm publish failed; retrying without NODE_AUTH_TOKEN for npm trusted publishing."
+            rm -f "$NPM_TOKEN_USERCONFIG"
+            unset NPM_CONFIG_USERCONFIG
+          fi
+
+          unset NODE_AUTH_TOKEN
+          npm publish .tmp/emcy-cli-package --access public --tag "${{ steps.legacy_preview.outputs.tag }}"
+
       - name: Verify preview package
         run: |
           for attempt in {1..12}; do
@@ -94,6 +139,17 @@ jobs:
           done
           npm view "${{ steps.preview.outputs.package_ref }}" version
 
+      - name: Verify legacy @emcy/cli preview package
+        run: |
+          for attempt in {1..12}; do
+            if npm view "${{ steps.legacy_preview.outputs.package_ref }}" version; then
+              exit 0
+            fi
+            echo "Legacy preview package is not visible in npm yet; retrying ($attempt/12)."
+            sleep 5
+          done
+          npm view "${{ steps.legacy_preview.outputs.package_ref }}" version
+
       - name: Comment package preview
         uses: actions/github-script@v7
         env:
@@ -102,19 +158,25 @@ jobs:
           TAG_REF: ${{ steps.preview.outputs.tag_ref }}
           TAG: ${{ steps.preview.outputs.tag }}
           PACKAGE_URL: ${{ steps.preview.outputs.package_url }}
+          LEGACY_PACKAGE_NAME: ${{ steps.legacy_preview.outputs.package_name }}
+          LEGACY_PACKAGE_REF: ${{ steps.legacy_preview.outputs.package_ref }}
+          LEGACY_TAG_REF: ${{ steps.legacy_preview.outputs.tag_ref }}
+          LEGACY_PACKAGE_URL: ${{ steps.legacy_preview.outputs.package_url }}
         with:
           script: |
-            const marker = `<!-- emcy-preview-package:${process.env.PACKAGE_NAME} -->`;
+            const marker = `<!-- mcpstack-preview-package:${process.env.PACKAGE_NAME} -->`;
             const manifestSnippet = JSON.stringify({ [process.env.PACKAGE_NAME]: process.env.TAG_REF }, null, 2);
             const body = [
               marker,
-              "Preview package published.",
+              "Preview packages published.",
               "",
               `- Package: [${process.env.PACKAGE_REF}](${process.env.PACKAGE_URL})`,
+              `- Legacy package: [${process.env.LEGACY_PACKAGE_REF}](${process.env.LEGACY_PACKAGE_URL})`,
               `- Dist tag: \`${process.env.TAG}\``,
               `- Install: \`npm i ${process.env.TAG_REF}\``,
+              `- Legacy install: \`npm i ${process.env.LEGACY_TAG_REF}\``,
               "",
-              "To use this in an `emcy-saas` PR preview, paste this into `infra/preview-packages.json` in the `emcy-saas` PR:",
+              "To use this in an `mcpstack-saas` PR preview, paste this into `infra/preview-packages.json` in the `mcpstack-saas` PR:",
               "",
               "```json",
               manifestSnippet,
@@ -159,3 +221,4 @@ jobs:
           PACKAGE_NAME="$(node -p "require('./package.json').name")"
           TAG="pr-${PR_NUMBER}"
           npm dist-tag rm "$PACKAGE_NAME" "$TAG" || true
+          npm dist-tag rm "@emcy/cli" "$TAG" || true
