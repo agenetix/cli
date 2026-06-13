@@ -131,7 +131,12 @@ async function loadKeytar(): Promise<KeytarModule | null> {
 
 function isKeychainDisabled(): boolean {
   const configured = process.env.MCPSTACK_DISABLE_KEYCHAIN?.trim().toLowerCase();
-  return configured === "1" || configured === "true" || configured === "yes";
+  if (configured === "1" || configured === "true" || configured === "yes") {
+    return true;
+  }
+
+  const ci = process.env.CI?.trim().toLowerCase();
+  return ci === "1" || ci === "true" || ci === "yes";
 }
 
 async function loadFallbackSecrets(): Promise<SecretMap> {
