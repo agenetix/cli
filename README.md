@@ -84,6 +84,9 @@ mcpstack members invitations list
 mcpstack api-keys create --name deploy-bot --role developer
 mcpstack api-keys list
 
+mcpstack billing status --json
+mcpstack billing credits checkout --amount 25 --non-interactive --wait --json
+
 mcpstack servers create --openapi-file ./openapi.yaml
 mcpstack servers get <server-id>
 mcpstack servers update <server-id> --name "Production API"
@@ -108,6 +111,17 @@ mcpstack agents chat <agent-id> --message "Summarize production health"
 Creating or updating a hosted server starts the managed edge publish automatically. The CLI intentionally does not expose separate deploy, undeploy, region mutation, reconcile, or rollback commands to customers; those are internal platform operations.
 
 When creating or updating from `--openapi-file`, the CLI reads the local JSON/YAML file, sends the spec contents to MCP Stack, and records the source as an upload. The file does not need to be publicly reachable. Use `servers update --openapi-file` whenever the local spec changes.
+
+## Billing Checkout
+
+Agents and CI can fund credits or upgrade hosted MCP from the terminal without loading the MCP Stack dashboard:
+
+```bash
+mcpstack billing credits checkout --amount 25 --non-interactive --wait --json
+mcpstack billing checkout --plan mcp_hosting_team --non-interactive --wait --json
+```
+
+With `--non-interactive --wait --json`, checkout emits a `checkout_session` JSON event to stderr with the Stripe `url`, exact `next.waitCommand`, and executable `next.waitArgs`. After the cardholder step completes, stdout contains the final checkout status JSON. If your runner cannot complete Stripe while the process stays open, omit `--wait`, complete the returned Stripe URL, and run `next.waitCommand`.
 
 ## Hosted Custom Domains
 

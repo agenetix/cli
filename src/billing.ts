@@ -26,6 +26,21 @@ type CheckoutSession = {
   [key: string]: unknown;
 };
 
+type CheckoutSessionOutput = CheckoutSession & {
+  product: BillingCheckoutProduct;
+  organizationId: string;
+  next: {
+    waitCommand: string;
+    waitArgs: string[];
+    statusCommand: string;
+    statusArgs: string[];
+    syncCommand: string;
+    syncArgs: string[];
+    statusUrl: string;
+    syncUrl: string;
+  };
+};
+
 type CheckoutStatus = {
   product: BillingCheckoutProduct;
   sessionId: string;
@@ -223,13 +238,16 @@ async function printCheckoutSession(
   product: BillingCheckoutProduct,
   session: CheckoutSession,
 ): Promise<void> {
-  const output = {
-    ...session,
-    product,
-    organizationId: orgId,
-  };
+  const output = buildCheckoutSessionOutput(client, orgId, product, session);
 
   if (options.nonInteractive) {
+    if (options.wait) {
+      console.error(JSON.stringify({ event: "checkout_session", ...output }));
+      const status = await waitForBillingSession(client, options, orgId, session.sessionId, product);
+      printData({ checkout: output, status }, forceJsonOptions(options));
+      return;
+    }
+
     printData(output, forceJsonOptions(options));
     return;
   }
@@ -247,7 +265,79 @@ async function printCheckoutSession(
   if (options.wait) {
     const status = await waitForBillingSession(client, options, orgId, session.sessionId, product);
     printData(status, options);
+  } else {
+    console.log(`Wait: ${output.next.waitCommand}`);
   }
+}
+
+function buildCheckoutSessionOutput(
+  client: McpstackClient,
+  orgId: string,
+  product: BillingCheckoutProduct,
+  session: CheckoutSession,
+): CheckoutSessionOutput {
+  const statusPath = getStatusPath(orgId, product, session.sessionId);
+  const syncPath = getSyncPath(orgId, product, session.sessionId);
+  const waitArgs = [
+    "--api-url",
+    client.apiUrl,
+    "--org",
+    orgId,
+    "billing",
+    "wait",
+    "--session",
+    session.sessionId,
+    "--product",
+    product,
+    "--non-interactive",
+    "--json",
+  ];
+  const statusArgs = [
+    "--api-url",
+    client.apiUrl,
+    "--org",
+    orgId,
+    "billing",
+    "status",
+    "--json",
+  ];
+  const syncArgs = [
+    "--api-url",
+    client.apiUrl,
+    "--org",
+    orgId,
+    "billing",
+    "sync",
+    session.sessionId,
+    "--product",
+    product,
+    "--json",
+  ];
+  return {
+    ...session,
+    product,
+    organizationId: orgId,
+    next: {
+      waitCommand: formatCommand("mcpstack", waitArgs),
+      waitArgs,
+      statusCommand: formatCommand("mcpstack", statusArgs),
+      statusArgs,
+      syncCommand: formatCommand("mcpstack", syncArgs),
+      syncArgs,
+      statusUrl: client.buildUrl(statusPath),
+      syncUrl: client.buildUrl(syncPath),
+    },
+  };
+}
+
+function formatCommand(command: string, args: string[]): string {
+  return [command, ...args].map(shellQuote).join(" ");
+}
+
+function shellQuote(value: string): string {
+  return /^[A-Za-z0-9_./:@%+=,-]+$/.test(value)
+    ? value
+    : `'${value.replace(/'/g, "'\\''")}'`;
 }
 
 async function waitForBillingSession(
