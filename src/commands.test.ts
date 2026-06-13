@@ -25,6 +25,7 @@ describe("mcpstack command surface", () => {
       "gateways",
       "gateway-public",
       "agents",
+      "billing",
     ]));
     expect(names).not.toEqual(expect.arrayContaining([
       "deploy",
@@ -201,6 +202,44 @@ describe("mcpstack command surface", () => {
     expect(deleteCommand?.description()).toBe("Remove a user's explicit budget so the agent default applies");
     expect(deleteCommand?.options.some((option) => option.long === "--user")).toBe(true);
     expect(deleteCommand?.options.some((option) => option.long === "--yes")).toBe(true);
+  });
+
+  it("exposes CLI-first billing commands", () => {
+    const program = new Command();
+    registerCommands(program);
+
+    const billing = program.commands.find((command) => command.name() === "billing");
+    const checkout = billing?.commands.find((command) => command.name() === "checkout");
+    const wait = billing?.commands.find((command) => command.name() === "wait");
+    const plans = billing?.commands.find((command) => command.name() === "plans");
+    const credits = billing?.commands.find((command) => command.name() === "credits");
+    const toolCallCredits = billing?.commands.find((command) => command.name() === "tool-call-credits");
+
+    expect(billing).toBeDefined();
+    expect(commandNames(billing!)).toEqual(expect.arrayContaining([
+      "status",
+      "plans",
+      "checkout",
+      "wait",
+      "sync",
+      "credits",
+      "tool-call-credits",
+    ]));
+    expect(commandNames(plans!)).toEqual(["list"]);
+    expect(checkout?.options.some((option) => option.long === "--plan" && option.mandatory)).toBe(true);
+    expect(checkout?.options.some((option) => option.long === "--non-interactive")).toBe(true);
+    expect(checkout?.options.some((option) => option.long === "--wait")).toBe(true);
+    expect(wait?.options.some((option) => option.long === "--session" && option.mandatory)).toBe(true);
+    expect(wait?.options.some((option) => option.long === "--product")).toBe(true);
+    expect(commandNames(credits!)).toEqual(expect.arrayContaining([
+      "checkout",
+      "ledger",
+      "settings",
+    ]));
+    expect(commandNames(toolCallCredits!)).toEqual(expect.arrayContaining([
+      "checkout",
+      "ledger",
+    ]));
   });
 
   it("derives server identity from an OpenAPI file", () => {

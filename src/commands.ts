@@ -6,6 +6,19 @@ import { Command } from "commander";
 import { parse as parseYaml } from "yaml";
 import { McpstackClient } from "./client.js";
 import { login, logout, serviceAccountLogin, serviceAccountLogout, status, whoami } from "./auth.js";
+import {
+  createAiCreditCheckout,
+  createHostingCheckout,
+  createToolCallCreditCheckout,
+  getAiCreditSettings,
+  listAiCreditLedger,
+  listBillingPlans,
+  listToolCallCreditLedger,
+  printBillingStatus,
+  setAiCreditSettings,
+  syncBillingSession,
+  waitForBillingSessionCommand,
+} from "./billing.js";
 import { gatewayDoctorColumns, runGatewayDoctor, type GatewayDoctorClient } from "./gateway-doctor.js";
 import { printData, printInfo, printSuccess, type TableColumn } from "./output.js";
 import type { GlobalOptions } from "./types.js";
@@ -66,6 +79,7 @@ export function registerCommands(program: Command): void {
   registerApiKeyCommands(program);
   registerDashboardCommands(program);
   registerHostingCommands(program);
+  registerBillingCommands(program);
   registerServerCommands(program);
   registerToolCommands(program);
   registerServerDiagnosticsCommands(program);
@@ -277,14 +291,104 @@ function registerHostingCommands(program: Command): void {
   hosting.command("usage").action(runClientWithOrg(async (client, options, orgId) => {
     printData(await client.request(`/api/v1/organizations/${orgId}/mcp-hosting/usage`), options);
   }));
+}
 
+function registerBillingCommands(program: Command): void {
   const billing = program.command("billing").description("Billing operations");
-  billing.command("checkout").action(runClientWithOrg(async (client, options, orgId) => {
-    printData(await client.request(`/api/v1/organizations/${orgId}/mcp-hosting/billing/checkout-session`, { method: "POST" }), options);
-  }));
-  billing.command("sync").argument("<sessionId>").action(runClientWithOrg(async (client, options, orgId, sessionId: string) => {
-    printData(await client.request(`/api/v1/organizations/${orgId}/mcp-hosting/billing/checkout-session/${sessionId}/sync`, { method: "POST" }), options);
-  }));
+
+  billing.command("status")
+    .description("Show hosting and AI credit billing status")
+    .action(runClientWithOrg(async (client, options, orgId) => {
+      await printBillingStatus(client, options, orgId);
+    }));
+
+  const plans = billing.command("plans").description("Inspect hosting plans");
+  plans.command("list")
+    .description("List self-serve MCP hosting plans")
+    .action(runClientWithOrg(async (client, options, orgId) => {
+      await listBillingPlans(client, options, orgId);
+    }));
+
+  billing.command("checkout")
+    .description("Start MCP hosting plan checkout")
+    .requiredOption("--plan <planKey>", "Hosting plan key, for example mcp_hosting_team")
+    .option("--non-interactive", "Print JSON and do not open a browser")
+    .option("--no-browser", "Do not open the system browser")
+    .option("--wait", "Wait for checkout completion")
+    .option("--timeout <seconds>", "Timeout for --wait")
+    .action(runClientWithOrg(async (client, options, orgId) => {
+      await createHostingCheckout(client, options, orgId);
+    }));
+
+  billing.command("wait")
+    .description("Wait for a Stripe Checkout session to grant billing entitlement")
+    .requiredOption("--session <sessionId>", "Stripe Checkout session id")
+    .option("--product <product>", "Product: hosting, ai-credits, or tool-call-credits")
+    .option("--non-interactive", "Print JSON")
+    .option("--timeout <seconds>", "Timeout in seconds", "300")
+    .action(runClientWithOrg(async (client, options, orgId) => {
+      await waitForBillingSessionCommand(client, options, orgId);
+    }));
+
+  billing.command("sync")
+    .description("Run idempotent checkout sync fallback for one session")
+    .argument("<sessionId>", "Stripe Checkout session id")
+    .option("--product <product>", "Product: hosting, ai-credits, or tool-call-credits", "hosting")
+    .action(runClientWithOrg(async (client, options, orgId, sessionId: string) => {
+      await syncBillingSession(client, options, orgId, sessionId);
+    }));
+
+  const credits = billing.command("credits").description("Manage prepaid hosted AI credits");
+  credits.command("checkout")
+    .description("Start AI credit checkout")
+    .requiredOption("--amount <usd>", "Top-up amount in USD")
+    .option("--non-interactive", "Print JSON and do not open a browser")
+    .option("--no-browser", "Do not open the system browser")
+    .option("--wait", "Wait for checkout completion")
+    .option("--timeout <seconds>", "Timeout for --wait")
+    .action(runClientWithOrg(async (client, options, orgId) => {
+      await createAiCreditCheckout(client, options, orgId);
+    }));
+  credits.command("ledger")
+    .description("List AI credit ledger entries")
+    .option("--category <category>", "Ledger category: purchases or usage", "purchases")
+    .option("--cursor <cursor>", "Pagination cursor")
+    .option("--page-size <count>", "Page size", "20")
+    .action(runClientWithOrg(async (client, options, orgId) => {
+      await listAiCreditLedger(client, options, orgId);
+    }));
+
+  const creditSettings = credits.command("settings").description("Inspect AI credit settings");
+  creditSettings.command("get")
+    .description("Show AI credit settings supported by the API")
+    .action(runClientWithOrg(async (client, options, orgId) => {
+      await getAiCreditSettings(client, options, orgId);
+    }));
+  creditSettings.command("set")
+    .description("Set AI credit auto top-up settings")
+    .action(run(async () => {
+      await setAiCreditSettings();
+    }));
+
+  const toolCallCredits = billing.command("tool-call-credits").description("Manage MCP hosting tool-call credits");
+  toolCallCredits.command("checkout")
+    .description("Start MCP tool-call credit checkout")
+    .requiredOption("--calls <count>", "Tool-call credit pack size")
+    .option("--non-interactive", "Print JSON and do not open a browser")
+    .option("--no-browser", "Do not open the system browser")
+    .option("--wait", "Wait for checkout completion")
+    .option("--timeout <seconds>", "Timeout for --wait")
+    .action(runClientWithOrg(async (client, options, orgId) => {
+      await createToolCallCreditCheckout(client, options, orgId);
+    }));
+  toolCallCredits.command("ledger")
+    .description("List MCP tool-call credit ledger entries")
+    .option("--category <category>", "Ledger category: purchases or usage", "purchases")
+    .option("--cursor <cursor>", "Pagination cursor")
+    .option("--page-size <count>", "Page size", "20")
+    .action(runClientWithOrg(async (client, options, orgId) => {
+      await listToolCallCreditLedger(client, options, orgId);
+    }));
 }
 
 function registerServerCommands(program: Command): void {
