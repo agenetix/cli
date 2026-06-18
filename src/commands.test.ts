@@ -18,6 +18,7 @@ describe("mcpstack command surface", () => {
       "members",
       "api-keys",
       "apps",
+      "models",
       "servers",
       "tools",
       "logs",
@@ -137,6 +138,9 @@ describe("mcpstack command surface", () => {
       "database",
       "files",
       "deployments",
+      "deployment",
+      "deploy",
+      "logs",
     ]));
 
     const create = apps?.commands.find((command) => command.name() === "create");
@@ -151,6 +155,23 @@ describe("mcpstack command surface", () => {
 
     const deployments = apps?.commands.find((command) => command.name() === "deployments");
     expect(deployments?.description()).toBe("List app deployments");
+
+    const deploy = apps?.commands.find((command) => command.name() === "deploy");
+    expect(deploy?.options.some((option) => option.long === "--workload")).toBe(true);
+    expect(deploy?.options.some((option) => option.long === "--repo")).toBe(true);
+    expect(deploy?.options.some((option) => option.long === "--environment")).toBe(true);
+
+    const logs = apps?.commands.find((command) => command.name() === "logs");
+    expect(logs?.options.some((option) => option.long === "--tail")).toBe(true);
+  });
+
+  it("exposes Agenetix platform model commands", () => {
+    const program = new Command();
+    registerCommands(program);
+
+    const models = program.commands.find((command) => command.name() === "models");
+    expect(models?.description()).toBe("List Agenetix platform models");
+    expect(commandNames(models!)).toEqual(["list"]);
   });
 
   it("does not expose legacy OpenAPI subcommands", () => {

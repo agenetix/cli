@@ -56,6 +56,14 @@ const deploymentColumns: TableColumn<any>[] = [
   { header: "URL", value: (item) => item.publicBaseUrl },
 ];
 
+const modelColumns: TableColumn<any>[] = [
+  { header: "ID", value: (item) => item.id },
+  { header: "Provider", value: (item) => item.provider },
+  { header: "Name", value: (item) => item.displayName },
+  { header: "Default", value: (item) => item.isDefault },
+  { header: "Unit", value: (item) => item.billingUnit },
+];
+
 const memberColumns: TableColumn<any>[] = [
   { header: "Principal", value: (item) => item.principalId ?? item.id },
   { header: "Name", value: (item) => item.displayName ?? item.name },
@@ -93,6 +101,7 @@ export function registerCommands(program: Command): void {
   registerDashboardCommands(program);
   registerHostingCommands(program);
   registerAppCommands(program);
+  registerModelCommands(program);
   registerServerCommands(program);
   registerToolCommands(program);
   registerServerDiagnosticsCommands(program);
@@ -455,6 +464,67 @@ function registerAppCommands(program: Command): void {
     .description("List app deployments")
     .action(runClientWithOrg(async (client, options, orgId, appId: string) => {
       printData(await client.request(`/api/v1/organizations/${orgId}/apps/${appId}/deployments`), options, deploymentColumns);
+    }));
+
+  apps.command("deployment")
+    .argument("<appId>")
+    .argument("<deploymentId>")
+    .description("Show one app deployment")
+    .action(runClientWithOrg(async (client, options, orgId, appId: string, deploymentId: string) => {
+      printData(await client.request(`/api/v1/organizations/${orgId}/apps/${appId}/deployments/${deploymentId}`), options);
+    }));
+
+  apps.command("deploy")
+    .argument("<appId>")
+    .requiredOption("--workload <workloadId>", "Workload id to deploy")
+    .requiredOption("--repo <url>", "Public GitHub repository URL")
+    .option("--environment <name>", "Environment name", "prod")
+    .option("--git-ref <ref>", "Git branch or tag. Defaults to the environment branch.")
+    .option("--git-sha <sha>", "Exact Git commit SHA to deploy")
+    .option("--region <region>", "Host region. Defaults to the environment default region.")
+    .option("--cpu <cpu>", "Container Apps CPU preset")
+    .option("--memory <memory>", "Container Apps memory preset")
+    .option("--min-replicas <count>", "Minimum replicas")
+    .option("--max-replicas <count>", "Maximum replicas")
+    .option("--idempotency-key <key>", "Idempotency key")
+    .description("Deploy a typed Agenetix workload from GitHub")
+    .action(runClientWithOrg(async (client, options, orgId, appId: string) => {
+      printData(await client.request(`/api/v1/organizations/${orgId}/apps/${appId}/workloads/${options.workload}/deploy`, {
+        method: "POST",
+        body: omitUndefined({
+          environment: options.environment,
+          sourceUri: options.repo,
+          sourceKind: "github",
+          gitRef: options.gitRef,
+          gitSha: options.gitSha,
+          region: options.region,
+          cpu: options.cpu,
+          memory: options.memory,
+          minReplicas: parseOptionalInteger(options.minReplicas, "--min-replicas"),
+          maxReplicas: parseOptionalInteger(options.maxReplicas, "--max-replicas"),
+          idempotencyKey: options.idempotencyKey,
+        }),
+      }), options);
+    }));
+
+  apps.command("logs")
+    .argument("<appId>")
+    .argument("<deploymentId>")
+    .option("--tail <count>", "Number of log lines to return")
+    .description("Show app deployment logs")
+    .action(runClientWithOrg(async (client, options, orgId, appId: string, deploymentId: string) => {
+      printData(await client.request(`/api/v1/organizations/${orgId}/apps/${appId}/deployments/${deploymentId}/logs`, {
+        query: omitUndefined({ tail: parseOptionalInteger(options.tail, "--tail") }),
+      }), options);
+    }));
+}
+
+function registerModelCommands(program: Command): void {
+  const models = program.command("models").description("List Agenetix platform models");
+  models.command("list")
+    .description("List platform-billed model options for the current organization")
+    .action(runClientWithOrg(async (client, options, orgId) => {
+      printData(await client.request(`/api/v1/organizations/${orgId}/agent-model-options`), options, modelColumns);
     }));
 }
 
@@ -1161,6 +1231,18 @@ function omitUndefined<T extends Record<string, unknown>>(value: T): T {
 
 function splitList(value: string): string[] {
   return value.split(/[,\s]+/).map((item) => item.trim()).filter(Boolean);
+}
+
+function parseOptionalInteger(value: string | undefined, flag: string): number | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!/^\d+$/.test(value)) {
+    throw new Error(`${flag} must be an integer.`);
+  }
+
+  return Number(value);
 }
 
 function parseOptionalPositiveMoney(value: string | undefined, flag: string): number | undefined {
