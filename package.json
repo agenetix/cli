@@ -1,5 +1,5 @@
 {
-  "name": "@mcpstack/cli",
+  "name": "@agenetix/cli",
   "version": "1.0.3",
   "publishConfig": {
     "access": "public",
@@ -18,7 +18,6 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
-    "prepare:legacy-emcy-cli": "node scripts/prepare-legacy-emcy-cli-package.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "prepublishOnly": "npm run build && npm test"

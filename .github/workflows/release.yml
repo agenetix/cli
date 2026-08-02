@@ -22,6 +22,9 @@ jobs:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
 
+      - name: Update npm for trusted publishing
+        run: npm install -g npm@latest
+
       - name: Install dependencies
         run: npm install
 
@@ -33,13 +36,3 @@ jobs:
 
       - name: Publish to npm
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Prepare legacy @emcy/cli package
-        run: npm run prepare:legacy-emcy-cli
-
-      - name: Publish legacy @emcy/cli to npm
-        run: npm publish .tmp/emcy-cli-package --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

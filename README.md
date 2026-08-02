@@ -5,10 +5,10 @@
 ## Install
 
 ```bash
-npm i -g @mcpstack/cli
+npm i -g @agenetix/cli
 ```
 
-Existing `@emcy/cli` installs remain supported as a compatibility package, but new projects should install `@mcpstack/cli`.
+Install with `npm install -g @agenetix/cli`.
 
 For local development:
 
@@ -20,13 +20,13 @@ node dist/index.js --help
 
 ## Preview Package
 
-Pull requests publish preview packages to npm with a stable dist-tag, for example `@mcpstack/cli@pr-12`. The workflow comments with the exact package ref.
+Pull requests publish preview packages to npm with a stable dist-tag, for example `@agenetix/cli@pr-12`. The workflow comments with the exact package ref.
 
 To test a CLI change inside a MCP Stack SaaS PR preview, add the ref to `infra/preview-packages.json` in that PR:
 
 ```json
 {
-  "@mcpstack/cli": "@mcpstack/cli@pr-12"
+  "@agenetix/cli": "@agenetix/cli@pr-12"
 }
 ```
 
