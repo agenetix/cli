@@ -4,7 +4,7 @@ import { runGatewayDoctor } from "./gateway-doctor.js";
 type RouteMap = Record<string, { status: number; body?: unknown; headers?: Record<string, string> }>;
 
 const publicId = "gw_test";
-const apiBaseUrl = "https://pr-12-api.preview.mcpstack.com";
+const apiBaseUrl = "https://pr-12-api.preview.agenetix.com";
 const gatewayBase = `${apiBaseUrl}/api/v1/gateway/${publicId}`;
 const mcpUrl = `${gatewayBase}/mcp`;
 const protectedResourceMetadataUrl = `${gatewayBase}/.well-known/oauth-protected-resource`;
@@ -41,7 +41,7 @@ function baseRoutes(toolCount = 2): RouteMap {
       status: 200,
       body: {
         jsonrpc: "2.0",
-        id: "mcpstack-doctor-tools-list",
+        id: "agenetix-doctor-tools-list",
         result: {
           tools: Array.from({ length: toolCount }, (_, index) => ({
             name: `tool_${index}`,

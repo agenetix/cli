@@ -2,7 +2,7 @@
 import { createRequire } from "node:module";
 import { Command } from "commander";
 import { registerCommands } from "./commands.js";
-import { McpstackHttpError } from "./client.js";
+import { AgenetixHttpError } from "./client.js";
 import { printError } from "./output.js";
 
 const require = createRequire(import.meta.url);
@@ -11,10 +11,10 @@ const { version } = require("../package.json") as { version: string };
 const program = new Command();
 
 program
-  .name("mcpstack")
-  .description("Manage MCP Stack organizations, MCP servers, gateways, agents, and service accounts.")
+  .name("agenetix")
+  .description("Manage Agenetix organizations, MCP servers, gateways, agents, and service accounts.")
   .version(version)
-  .option("--api-url <url>", "MCP Stack API URL")
+  .option("--api-url <url>", "Agenetix API URL")
   .option("--org <organizationId>", "Override organization id (advanced; default matches the SaaS dashboard)")
   .option("--json", "Print JSON output")
   .option("--output <format>", "Output format: table, json, yaml")
@@ -38,7 +38,7 @@ try {
     }
   }
 
-  if (error instanceof McpstackHttpError) {
+  if (error instanceof AgenetixHttpError) {
     printError(error.message);
     if (program.opts().debugHttp && error.body !== undefined) {
       console.error(JSON.stringify(error.body, null, 2));
