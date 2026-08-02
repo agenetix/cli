@@ -32,7 +32,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/emcy-ai/mcpstack-cli.git"
+    "url": "git+https://github.com/agenetix/mcpstack-cli.git"
   },
   "engines": {
     "node": ">=20.0.0"
