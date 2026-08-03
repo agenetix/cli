@@ -1,14 +1,14 @@
 {
   "name": "@agenetix/cli",
-  "version": "2.0.0",
+  "version": "1.0.4",
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
-  "description": "Agenetix command-line interface for managing organizations, MCP servers, gateways, and agents.",
+  "description": "MCP Stack command-line interface for managing organizations, MCP servers, gateways, and agents.",
   "type": "module",
   "bin": {
-    "agenetix": "dist/index.js"
+    "mcpstack": "dist/index.js"
   },
   "files": [
     "dist",
@@ -23,12 +23,12 @@
     "prepublishOnly": "npm run build && npm test"
   },
   "keywords": [
-    "agenetix",
+    "mcpstack",
     "mcp",
     "cli",
     "oauth"
   ],
-  "author": "Agenetix <hello@agenetix.com>",
+  "author": "MCP Stack <hello@mcpstack.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
