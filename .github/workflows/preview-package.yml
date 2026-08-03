@@ -104,7 +104,7 @@ jobs:
           PACKAGE_URL: ${{ steps.preview.outputs.package_url }}
         with:
           script: |
-            const marker = `<!-- agenetix-preview-package:${process.env.PACKAGE_NAME} -->`;
+            const marker = `<!-- mcpstack-preview-package:${process.env.PACKAGE_NAME} -->`;
             const manifestSnippet = JSON.stringify({ [process.env.PACKAGE_NAME]: process.env.TAG_REF }, null, 2);
             const body = [
               marker,
@@ -114,7 +114,7 @@ jobs:
               `- Dist tag: \`${process.env.TAG}\``,
               `- Install: \`npm i ${process.env.TAG_REF}\``,
               "",
-              "To use this in an `agenetix-saas` PR preview, paste this into `infra/preview-packages.json` in the `agenetix-saas` PR:",
+              "To use this in an `mcpstack-saas` PR preview, paste this into `infra/preview-packages.json` in the `mcpstack-saas` PR:",
               "",
               "```json",
               manifestSnippet,

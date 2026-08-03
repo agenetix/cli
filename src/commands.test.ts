@@ -6,7 +6,7 @@ function commandNames(command: Command): string[] {
   return command.commands.map((child) => child.name());
 }
 
-describe("agenetix command surface", () => {
+describe("mcpstack command surface", () => {
   it("registers the primary command groups", () => {
     const program = new Command();
     registerCommands(program);
