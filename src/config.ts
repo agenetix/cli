@@ -3,9 +3,9 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import type { ConfigFile } from "./types.js";
 
-const configPath = join(homedir(), ".config", "mcpstack", "config.json");
-const fallbackSecretPath = join(homedir(), ".config", "mcpstack", "secrets.json");
-const secretService = "mcpstack";
+const configPath = join(homedir(), ".config", "agenetix", "config.json");
+const fallbackSecretPath = join(homedir(), ".config", "agenetix", "secrets.json");
+const secretService = "agenetix";
 const secretAccountPrefix = "current";
 
 type SecretMap = Record<string, string>;
@@ -54,7 +54,7 @@ export async function clearConfig(): Promise<void> {
 export async function setActiveOrganization(orgId: string): Promise<void> {
   const config = await loadConfig();
   if (!config) {
-    throw new Error("No active login found. Run `mcpstack auth login` or `mcpstack auth service-account login` first.");
+    throw new Error("No active login found. Run `agenetix auth login` or `agenetix auth service-account login` first.");
   }
 
   await saveConfig({ ...config, orgId });
@@ -130,7 +130,7 @@ async function loadKeytar(): Promise<KeytarModule | null> {
 }
 
 function isKeychainDisabled(): boolean {
-  const configured = process.env.MCPSTACK_DISABLE_KEYCHAIN?.trim().toLowerCase();
+  const configured = process.env.AGENETIX_DISABLE_KEYCHAIN?.trim().toLowerCase();
   return configured === "1" || configured === "true" || configured === "yes";
 }
 
