@@ -4,7 +4,7 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 
 export async function tryOpenBrowser(url: string): Promise<boolean> {
-  if (process.env.AGENETIX_NO_BROWSER === "1" || process.env.CI) {
+  if (process.env.MCPSTACK_NO_BROWSER === "1" || process.env.CI) {
     return false;
   }
 
