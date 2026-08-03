@@ -4,7 +4,7 @@ import { getSecret, loadConfig, saveConfig, setSecret } from "./config.js";
 import { pickDefaultOrganization, type OrganizationSummary } from "./organization.js";
 import type { ConfigFile, GlobalOptions, RequestOptions, TokenResponse } from "./types.js";
 
-export class McpstackHttpError extends Error {
+export class AgenetixHttpError extends Error {
   constructor(
     message: string,
     public readonly status: number,
@@ -14,7 +14,7 @@ export class McpstackHttpError extends Error {
   }
 }
 
-export class McpstackClient {
+export class AgenetixClient {
   readonly apiUrl: string;
   readonly config?: ConfigFile;
 
@@ -27,13 +27,13 @@ export class McpstackClient {
     this.config = config;
   }
 
-  static async create(options: GlobalOptions): Promise<McpstackClient> {
+  static async create(options: GlobalOptions): Promise<AgenetixClient> {
     const config = await loadConfig();
     const apiUrl = options.apiUrl
-      ?? process.env.MCPSTACK_API_URL
+      ?? process.env.AGENETIX_API_URL
       ?? config?.apiUrl
       ?? DEFAULT_API_URL;
-    return new McpstackClient(options, apiUrl, config);
+    return new AgenetixClient(options, apiUrl, config);
   }
 
   async request<T = unknown>(path: string, requestOptions: RequestOptions = {}): Promise<T> {
@@ -72,8 +72,8 @@ export class McpstackClient {
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
       throw new Error(
-        `Could not reach MCP Stack API at ${this.apiUrl} (${detail}). `
-        + "Check the URL, network, and VPN, or pass --api-url / set MCPSTACK_API_URL.",
+        `Could not reach Agenetix API at ${this.apiUrl} (${detail}). `
+        + "Check the URL, network, and VPN, or pass --api-url / set AGENETIX_API_URL.",
       );
     }
 
@@ -82,7 +82,7 @@ export class McpstackClient {
       : await readJsonOrText(response);
 
     if (!response.ok) {
-      throw new McpstackHttpError(
+      throw new AgenetixHttpError(
         formatHttpError(response.status, responseBody),
         response.status,
         responseBody,
@@ -108,7 +108,7 @@ export class McpstackClient {
 
     const response = await fetch(url, { method: requestOptions.method ?? "GET", headers });
     if (!response.ok) {
-      throw new McpstackHttpError(
+      throw new AgenetixHttpError(
         formatHttpError(response.status, await readJsonOrText(response)),
         response.status,
         undefined,
@@ -143,7 +143,7 @@ export class McpstackClient {
   async resolveOrgId(explicitOrg?: string): Promise<string> {
     const override = explicitOrg
       ?? this.options.org
-      ?? process.env.MCPSTACK_ORG_ID;
+      ?? process.env.AGENETIX_ORG_ID;
     if (override) {
       return override;
     }
@@ -185,12 +185,12 @@ export class McpstackClient {
   }
 
   private async resolveAuthHeader(): Promise<string | undefined> {
-    const accessToken = process.env.MCPSTACK_ACCESS_TOKEN;
+    const accessToken = process.env.AGENETIX_ACCESS_TOKEN;
     if (accessToken) {
       return `Bearer ${accessToken}`;
     }
 
-    const apiKey = process.env.MCPSTACK_API_KEY;
+    const apiKey = process.env.AGENETIX_API_KEY;
     if (apiKey) {
       return `Bearer ${apiKey}`;
     }

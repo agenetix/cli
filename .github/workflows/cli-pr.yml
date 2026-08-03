@@ -1,4 +1,4 @@
-name: MCP Stack CLI Tests (PR)
+name: Agenetix CLI Tests (PR)
 
 on:
   pull_request:
