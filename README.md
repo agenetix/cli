@@ -18,11 +18,14 @@ npm run build
 node dist/index.js --help
 ```
 
-## Preview Package
+## Publishing
 
-Pull requests publish preview packages to npm with a stable dist-tag, for example `@agenetix/cli@pr-12`. The workflow comments with the exact package ref.
+`publish-npm.yml` is the only npm publish entry point. Merging to `main` does not publish `latest`.
 
-To test a CLI change inside a MCP Stack SaaS PR preview, add the ref to `infra/preview-packages.json` in that PR:
+- **Pull request against `main`** — publishes a preview dist-tag, for example `@agenetix/cli@pr-12`. The workflow comments with the exact package ref.
+- **`v*` tag** (for example `v2.0.3`) — publishes `latest`. Bump `package.json` first; npm will not overwrite an already-published version.
+
+To test a CLI change inside a platform PR preview, add the ref to `infra/preview-packages.json` in that PR:
 
 ```json
 {
@@ -30,7 +33,7 @@ To test a CLI change inside a MCP Stack SaaS PR preview, add the ref to `infra/p
 }
 ```
 
-The MCP Stack preview deploy installs that package before image builds, runs a CLI smoke check, and includes the resolved npm package link in the MCP Stack PR preview comment.
+The platform preview deploy installs that package before image builds, runs a CLI smoke check, and includes the resolved npm package link in the platform PR preview comment.
 
 ## Human Login
 
