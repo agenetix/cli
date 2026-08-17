@@ -1,40 +1,32 @@
-name: Publish npm package
+name: Publish package
 
 on:
-  workflow_call:
-    inputs:
-      mode:
-        description: "release publishes latest; preview stamps a pr-* version and dist-tag"
-        type: string
-        required: true
-    outputs:
-      package_ref:
-        description: "Exact npm package@version that was published"
-        value: ${{ jobs.publish.outputs.package_ref }}
-      tag_ref:
-        description: "Stable npm dist-tag ref, for example @agenetix/cli@pr-19"
-        value: ${{ jobs.publish.outputs.tag_ref }}
-      tag:
-        description: "npm dist-tag used for the publish"
-        value: ${{ jobs.publish.outputs.tag }}
-      package_url:
-        description: "npmjs.com URL for the published version"
-        value: ${{ jobs.publish.outputs.package_url }}
+  push:
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - closed
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
 
 jobs:
   publish:
     name: Publish to npm
+    if: >
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+      (github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
-      id-token: write
-    outputs:
-      package_ref: ${{ steps.meta.outputs.package_ref }}
-      tag_ref: ${{ steps.meta.outputs.tag_ref }}
-      tag: ${{ steps.meta.outputs.tag }}
-      package_url: ${{ steps.meta.outputs.package_url }}
 
     steps:
       - name: Checkout code
@@ -44,7 +36,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "24"
-          registry-url: "https://registry.npmjs.org"
 
       - name: Update npm for trusted publishing
         run: npm install -g npm@11
@@ -55,29 +46,21 @@ jobs:
       - name: Prepare package metadata
         id: meta
         env:
-          PUBLISH_MODE: ${{ inputs.mode }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           node <<'NODE' >> "$GITHUB_OUTPUT"
           const fs = require("node:fs");
           const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
-          const mode = process.env.PUBLISH_MODE;
-          if (mode !== "release" && mode !== "preview") {
-            throw new Error(`Unsupported publish mode: ${mode}`);
-          }
+          const isPreview = Boolean(process.env.PR_NUMBER);
 
-          if (mode === "preview") {
-            const prNumber = process.env.PR_NUMBER;
-            if (!prNumber) {
-              throw new Error("Preview publish requires a pull request number.");
-            }
+          if (isPreview) {
             const baseVersion = String(pkg.version).split("-")[0];
             const shortSha = process.env.GITHUB_SHA.slice(0, 12).replace(/[^0-9A-Za-z-]/g, "");
-            pkg.version = `${baseVersion}-pr.${prNumber}.${shortSha}.${process.env.GITHUB_RUN_NUMBER}.${process.env.GITHUB_RUN_ATTEMPT}`;
+            pkg.version = `${baseVersion}-pr.${process.env.PR_NUMBER}.${shortSha}.${process.env.GITHUB_RUN_NUMBER}.${process.env.GITHUB_RUN_ATTEMPT}`;
             fs.writeFileSync("package.json", `${JSON.stringify(pkg, null, 2)}\n`);
           }
 
-          const tag = mode === "preview" ? `pr-${process.env.PR_NUMBER}` : "latest";
+          const tag = isPreview ? `pr-${process.env.PR_NUMBER}` : "latest";
           const packageUrl = `https://www.npmjs.com/package/${pkg.name}/v/${pkg.version}`;
           console.log(`package_name=${pkg.name}`);
           console.log(`version=${pkg.version}`);
@@ -108,13 +91,13 @@ jobs:
           npm view "${{ steps.meta.outputs.package_ref }}" version
 
       - name: Create GitHub Release
-        if: inputs.mode == 'release'
+        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --generate-notes
 
       - name: Comment package preview
-        if: inputs.mode == 'preview'
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         env:
           PACKAGE_NAME: ${{ steps.meta.outputs.package_name }}
@@ -155,3 +138,27 @@ jobs:
             } else {
               await github.rest.issues.createComment({ owner, repo, issue_number, body });
             }
+
+  remove-preview-tag:
+    name: Remove PR preview dist-tag
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Remove dist-tag
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          PACKAGE_NAME="$(node -p "require('./package.json').name")"
+          TAG="pr-${PR_NUMBER}"
+          npm dist-tag rm "$PACKAGE_NAME" "$TAG" || true
