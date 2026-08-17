@@ -31,6 +31,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Update npm for trusted publishing
+        run: npm install -g npm@11
 
       - name: Install dependencies
         run: npm install
@@ -65,23 +69,7 @@ jobs:
         run: npm test
 
       - name: Publish preview package
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          if [[ -n "${NODE_AUTH_TOKEN:-}" ]]; then
-            NPM_TOKEN_USERCONFIG="$(mktemp)"
-            printf '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}\nregistry=https://registry.npmjs.org/\n' > "$NPM_TOKEN_USERCONFIG"
-            export NPM_CONFIG_USERCONFIG="$NPM_TOKEN_USERCONFIG"
-            if npm publish --provenance --access public --tag "${{ steps.preview.outputs.tag }}"; then
-              exit 0
-            fi
-            echo "::warning::Token-based npm publish failed; retrying without NODE_AUTH_TOKEN for npm trusted publishing."
-            rm -f "$NPM_TOKEN_USERCONFIG"
-            unset NPM_CONFIG_USERCONFIG
-          fi
-
-          unset NODE_AUTH_TOKEN
-          npm publish --access public --tag "${{ steps.preview.outputs.tag }}"
+        run: npm publish --provenance --access public --tag "${{ steps.preview.outputs.tag }}"
 
       - name: Verify preview package
         run: |
