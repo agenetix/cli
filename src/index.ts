@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import { Command } from "commander";
 import { registerCommands } from "./commands.js";
 import { McpstackHttpError } from "./client.js";
+import { CLI_NAME } from "./constants.js";
 import { printError } from "./output.js";
 
 const require = createRequire(import.meta.url);
@@ -11,8 +12,8 @@ const { version } = require("../package.json") as { version: string };
 const program = new Command();
 
 program
-  .name("mcpstack")
-  .description("Manage MCP Stack organizations, MCP servers, gateways, agents, and service accounts.")
+  .name(CLI_NAME)
+  .description("Manage Agenetix organizations, MCP servers, gateways, agents, and service accounts.")
   .version(version)
   .option("--api-url <url>", "MCP Stack API URL")
   .option("--org <organizationId>", "Override organization id (advanced; default matches the SaaS dashboard)")

@@ -5,10 +5,10 @@
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
-  "description": "MCP Stack command-line interface for managing organizations, MCP servers, gateways, and agents.",
+  "description": "Agenetix command-line interface for managing organizations, MCP servers, gateways, and agents.",
   "type": "module",
   "bin": {
-    "mcpstack": "dist/index.js"
+    "agenetix": "dist/index.js"
   },
   "files": [
     "dist",
@@ -23,6 +23,7 @@
     "prepublishOnly": "npm run build && npm test"
   },
   "keywords": [
+    "agenetix",
     "mcpstack",
     "mcp",
     "cli",

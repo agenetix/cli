@@ -1,6 +1,7 @@
 import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { CLI_NAME } from "./constants.js";
 import type { ConfigFile } from "./types.js";
 
 const configPath = join(homedir(), ".config", "mcpstack", "config.json");
@@ -54,7 +55,7 @@ export async function clearConfig(): Promise<void> {
 export async function setActiveOrganization(orgId: string): Promise<void> {
   const config = await loadConfig();
   if (!config) {
-    throw new Error("No active login found. Run `mcpstack auth login` or `mcpstack auth service-account login` first.");
+    throw new Error(`No active login found. Run \`${CLI_NAME} auth login\` or \`${CLI_NAME} auth service-account login\` first.`);
   }
 
   await saveConfig({ ...config, orgId });
