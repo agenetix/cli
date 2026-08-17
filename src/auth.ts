@@ -1,5 +1,5 @@
 import { clearConfig, loadConfig, saveConfig, setSecret } from "./config.js";
-import { DEFAULT_API_URL } from "./constants.js";
+import { CLI_NAME, DEFAULT_API_URL } from "./constants.js";
 import { McpstackClient } from "./client.js";
 import { tryOpenBrowser } from "./open-browser.js";
 import { printInfo, printSuccess, printWarning } from "./output.js";
@@ -99,7 +99,7 @@ export async function logout(_options: GlobalOptions): Promise<void> {
 export async function status(options: GlobalOptions): Promise<void> {
   const config = await loadConfig();
   if (!config) {
-    printWarning("No active login. Run `mcpstack auth login` or `mcpstack auth service-account login`.");
+    printWarning(`No active login. Run \`${CLI_NAME} auth login\` or \`${CLI_NAME} auth service-account login\`.`);
     return;
   }
 
@@ -238,11 +238,11 @@ async function pollDeviceToken(
     }
 
     if (error === "expired_token") {
-      throw new Error("Device login expired. Run `mcpstack auth login` again.");
+      throw new Error(`Device login expired. Run \`${CLI_NAME} auth login\` again.`);
     }
 
     throw new Error(`Device token polling failed: ${payload.error_description ?? error ?? response.statusText}`);
   }
 
-  throw new Error("Device login expired. Run `mcpstack auth login` again.");
+  throw new Error(`Device login expired. Run \`${CLI_NAME} auth login\` again.`);
 }

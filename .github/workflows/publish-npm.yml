@@ -1,6 +1,9 @@
-name: Preview package
+name: Publish package
 
 on:
+  push:
+    tags:
+      - "v*"
   pull_request:
     branches:
       - main
@@ -12,15 +15,17 @@ on:
       - closed
 
 permissions:
-  contents: read
+  contents: write
   issues: write
   pull-requests: write
   id-token: write
 
 jobs:
-  publish-preview:
-    name: Publish PR preview package
-    if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+  publish:
+    name: Publish to npm
+    if: >
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+      (github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
 
     steps:
@@ -32,76 +37,74 @@ jobs:
         with:
           node-version: "24"
 
+      - name: Update npm for trusted publishing
+        run: npm install -g npm@11
+
       - name: Install dependencies
         run: npm install
 
-      - name: Set preview version
-        id: preview
+      - name: Prepare package metadata
+        id: meta
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           node <<'NODE' >> "$GITHUB_OUTPUT"
           const fs = require("node:fs");
           const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
-          const baseVersion = String(pkg.version).split("-")[0];
-          const shortSha = process.env.GITHUB_SHA.slice(0, 12).replace(/[^0-9A-Za-z-]/g, "");
-          const version = `${baseVersion}-pr.${process.env.PR_NUMBER}.${shortSha}.${process.env.GITHUB_RUN_NUMBER}.${process.env.GITHUB_RUN_ATTEMPT}`;
-          pkg.version = version;
-          fs.writeFileSync("package.json", `${JSON.stringify(pkg, null, 2)}\n`);
-          const tag = `pr-${process.env.PR_NUMBER}`;
-          const packageUrl = `https://www.npmjs.com/package/${pkg.name}/v/${version}`;
+          const isPreview = Boolean(process.env.PR_NUMBER);
+
+          if (isPreview) {
+            const baseVersion = String(pkg.version).split("-")[0];
+            const shortSha = process.env.GITHUB_SHA.slice(0, 12).replace(/[^0-9A-Za-z-]/g, "");
+            pkg.version = `${baseVersion}-pr.${process.env.PR_NUMBER}.${shortSha}.${process.env.GITHUB_RUN_NUMBER}.${process.env.GITHUB_RUN_ATTEMPT}`;
+            fs.writeFileSync("package.json", `${JSON.stringify(pkg, null, 2)}\n`);
+          }
+
+          const tag = isPreview ? `pr-${process.env.PR_NUMBER}` : "latest";
+          const packageUrl = `https://www.npmjs.com/package/${pkg.name}/v/${pkg.version}`;
           console.log(`package_name=${pkg.name}`);
-          console.log(`version=${version}`);
+          console.log(`version=${pkg.version}`);
           console.log(`tag=${tag}`);
-          console.log(`package_ref=${pkg.name}@${version}`);
+          console.log(`package_ref=${pkg.name}@${pkg.version}`);
           console.log(`tag_ref=${pkg.name}@${tag}`);
           console.log(`package_url=${packageUrl}`);
           NODE
 
-      - name: Build
-        run: npm run build
-
       - name: Run tests
         run: npm test
 
-      - name: Publish preview package
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          if [[ -n "${NODE_AUTH_TOKEN:-}" ]]; then
-            NPM_TOKEN_USERCONFIG="$(mktemp)"
-            printf '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}\nregistry=https://registry.npmjs.org/\n' > "$NPM_TOKEN_USERCONFIG"
-            export NPM_CONFIG_USERCONFIG="$NPM_TOKEN_USERCONFIG"
-            if npm publish --provenance --access public --tag "${{ steps.preview.outputs.tag }}"; then
-              exit 0
-            fi
-            echo "::warning::Token-based npm publish failed; retrying without NODE_AUTH_TOKEN for npm trusted publishing."
-            rm -f "$NPM_TOKEN_USERCONFIG"
-            unset NPM_CONFIG_USERCONFIG
-          fi
+      - name: Build
+        run: npm run build
 
-          unset NODE_AUTH_TOKEN
-          npm publish --access public --tag "${{ steps.preview.outputs.tag }}"
+      - name: Publish to npm
+        run: npm publish --provenance --access public --tag "${{ steps.meta.outputs.tag }}"
 
-      - name: Verify preview package
+      - name: Verify published package
         run: |
           for attempt in {1..12}; do
-            if npm view "${{ steps.preview.outputs.package_ref }}" version; then
+            if npm view "${{ steps.meta.outputs.package_ref }}" version; then
               exit 0
             fi
-            echo "Preview package is not visible in npm yet; retrying ($attempt/12)."
+            echo "Package is not visible in npm yet; retrying ($attempt/12)."
             sleep 5
           done
-          npm view "${{ steps.preview.outputs.package_ref }}" version
+          npm view "${{ steps.meta.outputs.package_ref }}" version
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --generate-notes
 
       - name: Comment package preview
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         env:
-          PACKAGE_NAME: ${{ steps.preview.outputs.package_name }}
-          PACKAGE_REF: ${{ steps.preview.outputs.package_ref }}
-          TAG_REF: ${{ steps.preview.outputs.tag_ref }}
-          TAG: ${{ steps.preview.outputs.tag }}
-          PACKAGE_URL: ${{ steps.preview.outputs.package_url }}
+          PACKAGE_NAME: ${{ steps.meta.outputs.package_name }}
+          PACKAGE_REF: ${{ steps.meta.outputs.package_ref }}
+          TAG_REF: ${{ steps.meta.outputs.tag_ref }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          PACKAGE_URL: ${{ steps.meta.outputs.package_url }}
         with:
           script: |
             const marker = `<!-- mcpstack-preview-package:${process.env.PACKAGE_NAME} -->`;
@@ -114,7 +117,7 @@ jobs:
               `- Dist tag: \`${process.env.TAG}\``,
               `- Install: \`npm i ${process.env.TAG_REF}\``,
               "",
-              "To use this in an `mcpstack-saas` PR preview, paste this into `infra/preview-packages.json` in the `mcpstack-saas` PR:",
+              "To use this in a platform PR preview, paste this into `infra/preview-packages.json`:",
               "",
               "```json",
               manifestSnippet,
@@ -138,7 +141,7 @@ jobs:
 
   remove-preview-tag:
     name: Remove PR preview dist-tag
-    if: github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
 
     steps:

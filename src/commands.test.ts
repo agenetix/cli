@@ -1,12 +1,25 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { describe, expect, it } from "vitest";
 import { inferOpenApiServerName, registerCommands, slugifyServerName } from "./commands.js";
+import { CLI_NAME } from "./constants.js";
 
 function commandNames(command: Command): string[] {
   return command.commands.map((child) => child.name());
 }
 
-describe("mcpstack command surface", () => {
+describe("agenetix command surface", () => {
+  it("publishes the agenetix executable", () => {
+    const pkg = JSON.parse(
+      readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../package.json"), "utf8"),
+    ) as { bin?: Record<string, string> };
+
+    expect(CLI_NAME).toBe("agenetix");
+    expect(pkg.bin).toEqual({ agenetix: "dist/index.js" });
+  });
+
   it("registers the primary command groups", () => {
     const program = new Command();
     registerCommands(program);
