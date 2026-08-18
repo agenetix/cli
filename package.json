@@ -1,6 +1,6 @@
 {
   "name": "@agenetix/cli",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
@@ -29,7 +29,7 @@
     "cli",
     "oauth"
   ],
-  "author": "MCP Stack <hello@mcpstack.com>",
+  "author": "Agenetix <hello@agenetix.com>",
   "license": "MIT",
   "repository": {
     "type": "git",

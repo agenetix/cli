@@ -155,7 +155,7 @@ function resolveDoctorTarget(options: GatewayDoctorOptions): {
     throw new Error("Provide either <publicId> or --url for gateway-public doctor.");
   }
 
-  const apiBaseUrl = trimTrailingSlash(options.apiBaseUrl || "https://mcpstack.com");
+  const apiBaseUrl = trimTrailingSlash(options.apiBaseUrl || "https://api.agenetix.com");
   const base = `${apiBaseUrl}/api/v1/gateway/${encodeURIComponent(options.publicId)}`;
   return {
     mcpUrl: `${base}/mcp`,
