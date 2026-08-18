@@ -182,7 +182,7 @@ async function startDeviceAuthorization(
     const text = await response.text();
     throw new Error(
       response.status === 404
-        ? "The server does not expose device authorization yet. Update the MCP Stack API, then retry."
+        ? "The server does not expose device authorization yet. Update the Agenetix API, then retry."
         : `Device authorization failed: ${text || response.statusText}`,
     );
   }

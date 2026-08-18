@@ -15,7 +15,7 @@ program
   .name(CLI_NAME)
   .description("Manage Agenetix organizations, MCP servers, gateways, agents, and service accounts.")
   .version(version)
-  .option("--api-url <url>", "MCP Stack API URL")
+  .option("--api-url <url>", "Agenetix API URL")
   .option("--org <organizationId>", "Override organization id (advanced; default matches the SaaS dashboard)")
   .option("--json", "Print JSON output")
   .option("--output <format>", "Output format: table, json, yaml")

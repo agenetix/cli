@@ -4,7 +4,7 @@ import { runGatewayDoctor } from "./gateway-doctor.js";
 type RouteMap = Record<string, { status: number; body?: unknown; headers?: Record<string, string> }>;
 
 const publicId = "gw_test";
-const apiBaseUrl = "https://pr-12-api.preview.mcpstack.com";
+const apiBaseUrl = "https://pr-12-api.preview.agenetix.com";
 const gatewayBase = `${apiBaseUrl}/api/v1/gateway/${publicId}`;
 const mcpUrl = `${gatewayBase}/mcp`;
 const protectedResourceMetadataUrl = `${gatewayBase}/.well-known/oauth-protected-resource`;

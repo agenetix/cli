@@ -77,7 +77,7 @@ export function registerCommands(program: Command): void {
 }
 
 function registerAuthCommands(program: Command): void {
-  const auth = program.command("auth").description("Authenticate the MCP Stack CLI");
+  const auth = program.command("auth").description("Authenticate the Agenetix CLI");
 
   auth.command("login")
     .description("Sign in with OAuth device flow")

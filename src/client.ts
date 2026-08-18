@@ -72,7 +72,7 @@ export class McpstackClient {
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
       throw new Error(
-        `Could not reach MCP Stack API at ${this.apiUrl} (${detail}). `
+        `Could not reach Agenetix API at ${this.apiUrl} (${detail}). `
         + "Check the URL, network, and VPN, or pass --api-url / set MCPSTACK_API_URL.",
       );
     }
