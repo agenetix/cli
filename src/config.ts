@@ -44,15 +44,31 @@ export async function loadConfig(): Promise<ConfigFile | undefined> {
     };
 
     if (isLegacyMcpstackUrl(config.apiUrl)) {
-      // Pre-rebrand config points at the decommissioned mcpstack.com API and
-      // issuer; its tokens and client registration are unusable. Repoint the
-      // API URL, drop the dead login, and tell the user to sign in again.
+      // Pre-rebrand config points at the decommissioned mcpstack.com API.
+      // Repoint the API URL. Service-account keys are still honored by the
+      // renamed API, so their auth block stays; OAuth logins reference the
+      // dead issuer, so drop the auth block and its stored tokens and tell
+      // the user to sign in again.
       config.apiUrl = DEFAULT_API_URL;
-      delete config.auth;
-      await saveConfig(config);
-      console.error(
-        `Migrated legacy MCP Stack config to ${DEFAULT_API_URL}. Run \`${CLI_NAME} auth login\` to sign in again.`,
-      );
+      const droppedOauthLogin = config.auth?.type !== "api_key";
+      if (droppedOauthLogin) {
+        delete config.auth;
+        console.error(
+          `Migrated legacy MCP Stack config to ${DEFAULT_API_URL}. Run \`${CLI_NAME} auth login\` to sign in again.`,
+        );
+      } else {
+        console.error(`Migrated legacy MCP Stack config to ${DEFAULT_API_URL}.`);
+      }
+      try {
+        if (droppedOauthLogin) {
+          await deleteSecret("accessToken");
+          await deleteSecret("refreshToken");
+        }
+        await saveConfig(config);
+      } catch (saveError) {
+        const detail = saveError instanceof Error ? saveError.message : String(saveError);
+        console.error(`Could not persist migrated config to ${configPath} (${detail}).`);
+      }
     }
 
     return config;

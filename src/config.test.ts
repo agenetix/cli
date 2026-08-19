@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -28,13 +28,22 @@ describe("loadConfig legacy migration", () => {
   let home: string;
   let originalHome: string | undefined;
 
+  let originalDisableKeychain: string | undefined;
+
   beforeEach(async () => {
     originalHome = process.env.HOME;
+    originalDisableKeychain = process.env.MCPSTACK_DISABLE_KEYCHAIN;
+    process.env.MCPSTACK_DISABLE_KEYCHAIN = "1";
     home = await mkdtemp(join(tmpdir(), "agenetix-cli-config-"));
   });
 
   afterEach(() => {
     process.env.HOME = originalHome;
+    if (originalDisableKeychain === undefined) {
+      delete process.env.MCPSTACK_DISABLE_KEYCHAIN;
+    } else {
+      process.env.MCPSTACK_DISABLE_KEYCHAIN = originalDisableKeychain;
+    }
     vi.resetModules();
   });
 
@@ -94,6 +103,68 @@ describe("loadConfig legacy migration", () => {
     expect(config?.apiUrl).toBe("https://api.agenetix.com");
     expect(errorSpy).not.toHaveBeenCalled();
     expect(JSON.parse(await readFile(path, "utf8"))).toEqual(current);
+    errorSpy.mockRestore();
+  });
+
+  it("clears stale OAuth secrets when dropping a legacy login", async () => {
+    await writeConfig(legacyConfig);
+    const secretsPath = join(home, ".config", "mcpstack", "secrets.json");
+    await writeFile(
+      secretsPath,
+      JSON.stringify({ "current:accessToken": "stale-access", "current:refreshToken": "stale-refresh" }),
+    );
+    const { loadConfig } = await loadConfigModule(home);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await loadConfig();
+
+    const secrets = JSON.parse(await readFile(secretsPath, "utf8"));
+    expect(secrets["current:accessToken"]).toBeUndefined();
+    expect(secrets["current:refreshToken"]).toBeUndefined();
+    errorSpy.mockRestore();
+  });
+
+  it("preserves service-account auth and only repoints the API URL", async () => {
+    const path = await writeConfig({
+      apiUrl: "https://api.mcpstack.com",
+      orgId: "org_x",
+      auth: { type: "api_key" },
+    });
+    const secretsPath = join(home, ".config", "mcpstack", "secrets.json");
+    await writeFile(secretsPath, JSON.stringify({ "current:apiKey": "mcpstack_sk_live" }));
+    const { loadConfig } = await loadConfigModule(home);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const config = await loadConfig();
+
+    expect(config).toEqual({
+      apiUrl: DEFAULT_API_URL,
+      orgId: "org_x",
+      orgName: undefined,
+      auth: { type: "api_key" },
+    });
+    expect(errorSpy).toHaveBeenCalledWith(expect.not.stringContaining("auth login"));
+    const persisted = JSON.parse(await readFile(path, "utf8"));
+    expect(persisted.auth).toEqual({ type: "api_key" });
+    const secrets = JSON.parse(await readFile(secretsPath, "utf8"));
+    expect(secrets["current:apiKey"]).toBe("mcpstack_sk_live");
+    errorSpy.mockRestore();
+  });
+
+  it("still migrates in memory when the config file is read-only", async () => {
+    const path = await writeConfig(legacyConfig);
+    await chmod(path, 0o444);
+    const { loadConfig } = await loadConfigModule(home);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const config = await loadConfig();
+
+    expect(config?.apiUrl).toBe(DEFAULT_API_URL);
+    expect(config?.auth).toBeUndefined();
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Could not persist"));
+
+    await chmod(path, 0o644);
+    expect(JSON.parse(await readFile(path, "utf8")).apiUrl).toBe("https://api.mcpstack.com");
     errorSpy.mockRestore();
   });
 
