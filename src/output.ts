@@ -13,7 +13,7 @@ export function resolveOutput(options: GlobalOptions): OutputFormat {
     return "json";
   }
 
-  const configured = (options.output ?? process.env.MCPSTACK_OUTPUT ?? "table").toLowerCase();
+  const configured = (options.output ?? process.env.AGENETIX_OUTPUT ?? "table").toLowerCase();
   if (configured === "json" || configured === "yaml" || configured === "table") {
     return configured;
   }

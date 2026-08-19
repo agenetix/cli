@@ -280,7 +280,7 @@ async function postToolsList(fetchImpl: FetchLike, url: string, bearer?: string)
   return readHttpResult(url, await fetchImpl(url, {
     method: "POST",
     headers,
-    body: JSON.stringify({ jsonrpc: "2.0", id: "mcpstack-doctor-tools-list", method: "tools/list", params: {} }),
+    body: JSON.stringify({ jsonrpc: "2.0", id: "agenetix-doctor-tools-list", method: "tools/list", params: {} }),
   }));
 }
 

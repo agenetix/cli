@@ -4,7 +4,7 @@ import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { Command } from "commander";
 import { parse as parseYaml } from "yaml";
-import { McpstackClient } from "./client.js";
+import { EmcyClient } from "./client.js";
 import { login, logout, serviceAccountLogin, serviceAccountLogout, status, whoami } from "./auth.js";
 import { gatewayDoctorColumns, runGatewayDoctor, type GatewayDoctorClient } from "./gateway-doctor.js";
 import { printData, printInfo, printSuccess, type TableColumn } from "./output.js";
@@ -835,14 +835,14 @@ function run(action: CommandAction) {
   };
 }
 
-function runClient(action: (client: McpstackClient, options: GlobalOptions & Record<string, any>, ...args: any[]) => Promise<void>) {
+function runClient(action: (client: EmcyClient, options: GlobalOptions & Record<string, any>, ...args: any[]) => Promise<void>) {
   return run(async (options, ...args) => {
-    const client = await McpstackClient.create(options);
+    const client = await EmcyClient.create(options);
     await action(client, options, ...args);
   });
 }
 
-function runClientWithOrg(action: (client: McpstackClient, options: GlobalOptions & Record<string, any>, orgId: string, ...args: any[]) => Promise<void>) {
+function runClientWithOrg(action: (client: EmcyClient, options: GlobalOptions & Record<string, any>, orgId: string, ...args: any[]) => Promise<void>) {
   return runClient(async (client, options, ...args) => {
     const orgId = await client.resolveOrgId(options.org);
     await action(client, options, orgId, ...args);
