@@ -147,4 +147,4 @@ MCPSTACK_OUTPUT
 NO_COLOR
 ```
 
-The active login and selected organization are stored at `~/.config/mcpstack/config.json`. Secrets use the OS keychain when `keytar` is available, with a `0600` local fallback. Set `MCPSTACK_DISABLE_KEYCHAIN=1` for CI or isolated E2E runs that should not touch the desktop keychain.
+The active login and selected organization are stored at `~/.config/mcpstack/config.json`. Secrets use the OS keychain when available, with a `0600` local fallback. Set `MCPSTACK_DISABLE_KEYCHAIN=1` for CI or isolated E2E runs that should not touch the desktop keychain.
