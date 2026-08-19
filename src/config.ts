@@ -1,8 +1,18 @@
 import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { CLI_NAME } from "./constants.js";
+import { CLI_NAME, DEFAULT_API_URL } from "./constants.js";
 import type { ConfigFile } from "./types.js";
+
+/** Hosts used before the Agenetix rebrand. Logins stored against them are unusable. */
+function isLegacyMcpstackUrl(value: string): boolean {
+  try {
+    const host = new URL(value).hostname;
+    return host === "mcpstack.com" || host.endsWith(".mcpstack.com");
+  } catch {
+    return false;
+  }
+}
 
 const configPath = join(homedir(), ".config", "mcpstack", "config.json");
 const fallbackSecretPath = join(homedir(), ".config", "mcpstack", "secrets.json");
@@ -26,12 +36,26 @@ export async function loadConfig(): Promise<ConfigFile | undefined> {
       return undefined;
     }
 
-    return {
+    const config: ConfigFile = {
       apiUrl: parsed.apiUrl,
       orgId: parsed.orgId,
       orgName: parsed.orgName,
       auth: parsed.auth,
     };
+
+    if (isLegacyMcpstackUrl(config.apiUrl)) {
+      // Pre-rebrand config points at the decommissioned mcpstack.com API and
+      // issuer; its tokens and client registration are unusable. Repoint the
+      // API URL, drop the dead login, and tell the user to sign in again.
+      config.apiUrl = DEFAULT_API_URL;
+      delete config.auth;
+      await saveConfig(config);
+      console.error(
+        `Migrated legacy MCP Stack config to ${DEFAULT_API_URL}. Run \`${CLI_NAME} auth login\` to sign in again.`,
+      );
+    }
+
+    return config;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return undefined;
