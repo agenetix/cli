@@ -30,6 +30,8 @@ describe("agenetix command surface", () => {
       "org",
       "members",
       "api-keys",
+      "apps",
+      "models",
       "servers",
       "tools",
       "logs",
@@ -132,6 +134,57 @@ describe("agenetix command surface", () => {
     const updateCommand = servers?.commands.find((command) => command.name() === "update");
     expect(updateCommand?.options.some((option) => option.long === "--openapi-file")).toBe(true);
     expect(updateCommand?.options.some((option) => option.long === "--openapi-url")).toBe(true);
+  });
+
+  it("exposes Agenetix app declaration commands", () => {
+    const program = new Command();
+    registerCommands(program);
+
+    const apps = program.commands.find((command) => command.name() === "apps");
+    expect(commandNames(apps!)).toEqual(expect.arrayContaining([
+      "list",
+      "get",
+      "create",
+      "update",
+      "workloads",
+      "environments",
+      "database",
+      "files",
+      "deployments",
+      "deployment",
+      "deploy",
+      "logs",
+    ]));
+
+    const create = apps?.commands.find((command) => command.name() === "create");
+    expect(create?.options.some((option) => option.long === "--workload-kind")).toBe(true);
+    expect(create?.options.some((option) => option.long === "--database")).toBe(true);
+    expect(create?.options.some((option) => option.long === "--file-store")).toBe(true);
+
+    const workloads = apps?.commands.find((command) => command.name() === "workloads");
+    expect(commandNames(workloads!)).toEqual(["add"]);
+    const workloadAdd = workloads?.commands.find((command) => command.name() === "add");
+    expect(workloadAdd?.options.some((option) => option.long === "--kind")).toBe(true);
+
+    const deployments = apps?.commands.find((command) => command.name() === "deployments");
+    expect(deployments?.description()).toBe("List app deployments");
+
+    const deploy = apps?.commands.find((command) => command.name() === "deploy");
+    expect(deploy?.options.some((option) => option.long === "--workload")).toBe(true);
+    expect(deploy?.options.some((option) => option.long === "--repo")).toBe(true);
+    expect(deploy?.options.some((option) => option.long === "--environment")).toBe(true);
+
+    const logs = apps?.commands.find((command) => command.name() === "logs");
+    expect(logs?.options.some((option) => option.long === "--tail")).toBe(true);
+  });
+
+  it("exposes Agenetix platform model commands", () => {
+    const program = new Command();
+    registerCommands(program);
+
+    const models = program.commands.find((command) => command.name() === "models");
+    expect(models?.description()).toBe("List Agenetix platform models");
+    expect(commandNames(models!)).toEqual(["list"]);
   });
 
   it("does not expose legacy OpenAPI subcommands", () => {

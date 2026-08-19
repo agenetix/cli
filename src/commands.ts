@@ -30,6 +30,40 @@ const serverColumns: TableColumn<any>[] = [
   { header: "Status", value: (item) => item.status },
 ];
 
+const appColumns: TableColumn<any>[] = [
+  { header: "ID", value: (item) => item.id },
+  { header: "Name", value: (item) => item.name },
+  { header: "Slug", value: (item) => item.slug },
+  { header: "Workloads", value: (item) => item.workloadCount },
+  { header: "Envs", value: (item) => item.environmentCount },
+  { header: "Status", value: (item) => item.status },
+];
+
+const workloadColumns: TableColumn<any>[] = [
+  { header: "ID", value: (item) => item.id },
+  { header: "Name", value: (item) => item.name },
+  { header: "Slug", value: (item) => item.slug },
+  { header: "Kind", value: (item) => item.kind },
+  { header: "Status", value: (item) => item.status },
+];
+
+const deploymentColumns: TableColumn<any>[] = [
+  { header: "ID", value: (item) => item.id },
+  { header: "Environment", value: (item) => item.environmentId },
+  { header: "Workload", value: (item) => item.workloadId },
+  { header: "Kind", value: (item) => item.deploymentKind },
+  { header: "Status", value: (item) => item.deploymentStatus },
+  { header: "URL", value: (item) => item.publicBaseUrl },
+];
+
+const modelColumns: TableColumn<any>[] = [
+  { header: "ID", value: (item) => item.id },
+  { header: "Provider", value: (item) => item.provider },
+  { header: "Name", value: (item) => item.displayName },
+  { header: "Default", value: (item) => item.isDefault },
+  { header: "Unit", value: (item) => item.billingUnit },
+];
+
 const memberColumns: TableColumn<any>[] = [
   { header: "Principal", value: (item) => item.principalId ?? item.id },
   { header: "Name", value: (item) => item.displayName ?? item.name },
@@ -66,6 +100,8 @@ export function registerCommands(program: Command): void {
   registerApiKeyCommands(program);
   registerDashboardCommands(program);
   registerHostingCommands(program);
+  registerAppCommands(program);
+  registerModelCommands(program);
   registerServerCommands(program);
   registerToolCommands(program);
   registerServerDiagnosticsCommands(program);
@@ -285,6 +321,211 @@ function registerHostingCommands(program: Command): void {
   billing.command("sync").argument("<sessionId>").action(runClientWithOrg(async (client, options, orgId, sessionId: string) => {
     printData(await client.request(`/api/v1/organizations/${orgId}/mcp-hosting/billing/checkout-session/${sessionId}/sync`, { method: "POST" }), options);
   }));
+}
+
+function registerAppCommands(program: Command): void {
+  const apps = program.command("apps").description("Manage Agenetix apps");
+  apps.command("list").action(runClientWithOrg(async (client, options, orgId) => {
+    printData(await client.request(`/api/v1/organizations/${orgId}/apps`), options, appColumns);
+  }));
+  apps.command("get").argument("<appId>").action(runClientWithOrg(async (client, options, orgId, appId: string) => {
+    printData(await client.request(`/api/v1/organizations/${orgId}/apps/${appId}`), options);
+  }));
+  apps.command("create")
+    .requiredOption("--name <name>", "App name")
+    .option("--slug <slug>", "App slug. Defaults to a slugified app name.")
+    .option("--description <description>", "App description")
+    .option("--workload-kind <kind>", "Initial workload kind: nextjs, dotnet, mcp_openapi, or mcp_external")
+    .option("--workload-name <name>", "Initial workload name. Defaults to the app name.")
+    .option("--workload-slug <slug>", "Initial workload slug. Defaults to the app slug.")
+    .option("--path <path>", "Initial workload source path")
+    .option("--health-path <path>", "Initial workload health path")
+    .option("--database <name>", "Declare one Azure SQL serverless database")
+    .option("--file-store <name>", "Declare one Azure Blob file store")
+    .description("Create an Agenetix app declaration. Production environment is added by the platform.")
+    .action(runClientWithOrg(async (client, options, orgId) => {
+      const name = normalizeNonEmpty(options.name);
+      if (!name) {
+        throw new Error("--name is required.");
+      }
+
+      const slug = options.slug ?? slugifyServerName(name);
+      const workloads = options.workloadKind
+        ? [omitUndefined({
+            name: options.workloadName ?? name,
+            slug: options.workloadSlug ?? slug,
+            kind: options.workloadKind,
+            path: options.path,
+            healthPath: options.healthPath,
+          })]
+        : undefined;
+      const databases = options.database ? [{ name: options.database }] : undefined;
+      const fileStores = options.fileStore ? [{ name: options.fileStore }] : undefined;
+      printData(await client.request(`/api/v1/organizations/${orgId}/apps`, {
+        method: "POST",
+        body: omitUndefined({
+          name,
+          slug,
+          description: options.description,
+          workloads,
+          databases,
+          fileStores,
+        }),
+      }), options);
+    }));
+
+  apps.command("update")
+    .argument("<appId>")
+    .option("--name <name>", "App name")
+    .option("--slug <slug>", "App slug")
+    .option("--description <description>", "App description")
+    .action(runClientWithOrg(async (client, options, orgId, appId: string) => {
+      const body = omitUndefined({
+        name: options.name,
+        slug: options.slug,
+        description: options.description,
+      });
+      if (Object.keys(body).length === 0) {
+        throw new Error("Provide at least one update option.");
+      }
+
+      printData(await client.request(`/api/v1/organizations/${orgId}/apps/${appId}`, {
+        method: "PATCH",
+        body,
+      }), options);
+    }));
+
+  const workloads = apps.command("workloads").description("Manage app workload declarations");
+  workloads.command("add")
+    .argument("<appId>")
+    .requiredOption("--name <name>", "Workload name")
+    .requiredOption("--slug <slug>", "Workload slug")
+    .requiredOption("--kind <kind>", "Workload kind: nextjs, dotnet, mcp_openapi, or mcp_external")
+    .option("--path <path>", "Workload source path")
+    .option("--health-path <path>", "Workload health path")
+    .action(runClientWithOrg(async (client, options, orgId, appId: string) => {
+      printData(await client.request(`/api/v1/organizations/${orgId}/apps/${appId}/workloads`, {
+        method: "POST",
+        body: omitUndefined({
+          name: options.name,
+          slug: options.slug,
+          kind: options.kind,
+          path: options.path,
+          healthPath: options.healthPath,
+        }),
+      }), options, workloadColumns);
+    }));
+
+  const environments = apps.command("environments").description("Manage app environments");
+  environments.command("add")
+    .argument("<appId>")
+    .requiredOption("--name <name>", "Environment name")
+    .option("--display-name <name>", "Environment display name")
+    .option("--kind <kind>", "Environment kind: prod, staging, or preview")
+    .option("--branch <branch>", "Associated git branch")
+    .option("--teardown-policy <policy>", "Environment teardown policy: never or on_close")
+    .action(runClientWithOrg(async (client, options, orgId, appId: string) => {
+      printData(await client.request(`/api/v1/organizations/${orgId}/apps/${appId}/environments`, {
+        method: "POST",
+        body: omitUndefined({
+          name: options.name,
+          displayName: options.displayName,
+          kind: options.kind,
+          branch: options.branch,
+          teardownPolicy: options.teardownPolicy,
+        }),
+      }), options);
+    }));
+
+  apps.command("database")
+    .argument("<appId>")
+    .requiredOption("--name <name>", "Database declaration name")
+    .description("Declare an Azure SQL serverless database for an app")
+    .action(runClientWithOrg(async (client, options, orgId, appId: string) => {
+      printData(await client.request(`/api/v1/organizations/${orgId}/apps/${appId}/databases`, {
+        method: "POST",
+        body: { name: options.name },
+      }), options);
+    }));
+
+  apps.command("files")
+    .argument("<appId>")
+    .requiredOption("--name <name>", "File store declaration name")
+    .description("Declare an Azure Blob file store for an app")
+    .action(runClientWithOrg(async (client, options, orgId, appId: string) => {
+      printData(await client.request(`/api/v1/organizations/${orgId}/apps/${appId}/file-stores`, {
+        method: "POST",
+        body: { name: options.name },
+      }), options);
+    }));
+
+  apps.command("deployments")
+    .argument("<appId>")
+    .description("List app deployments")
+    .action(runClientWithOrg(async (client, options, orgId, appId: string) => {
+      printData(await client.request(`/api/v1/organizations/${orgId}/apps/${appId}/deployments`), options, deploymentColumns);
+    }));
+
+  apps.command("deployment")
+    .argument("<appId>")
+    .argument("<deploymentId>")
+    .description("Show one app deployment")
+    .action(runClientWithOrg(async (client, options, orgId, appId: string, deploymentId: string) => {
+      printData(await client.request(`/api/v1/organizations/${orgId}/apps/${appId}/deployments/${deploymentId}`), options);
+    }));
+
+  apps.command("deploy")
+    .argument("<appId>")
+    .requiredOption("--workload <workloadId>", "Workload id to deploy")
+    .requiredOption("--repo <url>", "Public GitHub repository URL")
+    .option("--environment <name>", "Environment name", "prod")
+    .option("--git-ref <ref>", "Git branch or tag. Defaults to the environment branch.")
+    .option("--git-sha <sha>", "Exact Git commit SHA to deploy")
+    .option("--region <region>", "Host region. Defaults to the environment default region.")
+    .option("--cpu <cpu>", "Container Apps CPU preset")
+    .option("--memory <memory>", "Container Apps memory preset")
+    .option("--min-replicas <count>", "Minimum replicas")
+    .option("--max-replicas <count>", "Maximum replicas")
+    .option("--idempotency-key <key>", "Idempotency key")
+    .description("Deploy a typed Agenetix workload from GitHub")
+    .action(runClientWithOrg(async (client, options, orgId, appId: string) => {
+      printData(await client.request(`/api/v1/organizations/${orgId}/apps/${appId}/workloads/${options.workload}/deploy`, {
+        method: "POST",
+        body: omitUndefined({
+          environment: options.environment,
+          sourceUri: options.repo,
+          sourceKind: "github",
+          gitRef: options.gitRef,
+          gitSha: options.gitSha,
+          region: options.region,
+          cpu: options.cpu,
+          memory: options.memory,
+          minReplicas: parseOptionalInteger(options.minReplicas, "--min-replicas"),
+          maxReplicas: parseOptionalInteger(options.maxReplicas, "--max-replicas"),
+          idempotencyKey: options.idempotencyKey,
+        }),
+      }), options);
+    }));
+
+  apps.command("logs")
+    .argument("<appId>")
+    .argument("<deploymentId>")
+    .option("--tail <count>", "Number of log lines to return")
+    .description("Show app deployment logs")
+    .action(runClientWithOrg(async (client, options, orgId, appId: string, deploymentId: string) => {
+      printData(await client.request(`/api/v1/organizations/${orgId}/apps/${appId}/deployments/${deploymentId}/logs`, {
+        query: omitUndefined({ tail: parseOptionalInteger(options.tail, "--tail") }),
+      }), options);
+    }));
+}
+
+function registerModelCommands(program: Command): void {
+  const models = program.command("models").description("List Agenetix platform models");
+  models.command("list")
+    .description("List platform-billed model options for the current organization")
+    .action(runClientWithOrg(async (client, options, orgId) => {
+      printData(await client.request(`/api/v1/organizations/${orgId}/agent-model-options`), options, modelColumns);
+    }));
 }
 
 function registerServerCommands(program: Command): void {
@@ -990,6 +1231,18 @@ function omitUndefined<T extends Record<string, unknown>>(value: T): T {
 
 function splitList(value: string): string[] {
   return value.split(/[,\s]+/).map((item) => item.trim()).filter(Boolean);
+}
+
+function parseOptionalInteger(value: string | undefined, flag: string): number | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!/^\d+$/.test(value)) {
+    throw new Error(`${flag} must be an integer.`);
+  }
+
+  return Number(value);
 }
 
 function parseOptionalPositiveMoney(value: string | undefined, flag: string): number | undefined {
