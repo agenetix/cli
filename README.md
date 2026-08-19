@@ -63,7 +63,7 @@ Automation and CI should use an Agenetix service-account API key. You can either
 ```bash
 agenetix auth service-account login \
   --api-url https://api.agenetix.com \
-  --key mcpstack_sk_...
+  --key agenetix_sk_...
 
 agenetix servers list
 ```
@@ -71,8 +71,8 @@ agenetix servers list
 Equivalent environment-only usage:
 
 ```bash
-MCPSTACK_API_URL=https://api.agenetix.com \
-MCPSTACK_API_KEY=mcpstack_sk_... \
+AGENETIX_API_URL=https://api.agenetix.com \
+AGENETIX_API_KEY=agenetix_sk_... \
 agenetix servers list
 ```
 
@@ -138,13 +138,13 @@ Global flags:
 Environment overrides:
 
 ```text
-MCPSTACK_API_URL
-MCPSTACK_ORG_ID
-MCPSTACK_ACCESS_TOKEN
-MCPSTACK_API_KEY
-MCPSTACK_DISABLE_KEYCHAIN
-MCPSTACK_OUTPUT
+AGENETIX_API_URL
+AGENETIX_ORG_ID
+AGENETIX_ACCESS_TOKEN
+AGENETIX_API_KEY
+AGENETIX_DISABLE_KEYCHAIN
+AGENETIX_OUTPUT
 NO_COLOR
 ```
 
-The active login and selected organization are stored at `~/.config/mcpstack/config.json`. Secrets use the OS keychain when `keytar` is available, with a `0600` local fallback. Set `MCPSTACK_DISABLE_KEYCHAIN=1` for CI or isolated E2E runs that should not touch the desktop keychain.
+The active login and selected organization are stored at `~/.config/agenetix/config.json`. Secrets use the OS keychain when `keytar` is available, with a `0600` local fallback. Set `AGENETIX_DISABLE_KEYCHAIN=1` for CI or isolated E2E runs that should not touch the desktop keychain.

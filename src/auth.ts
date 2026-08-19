@@ -1,6 +1,6 @@
 import { clearConfig, loadConfig, saveConfig, setSecret } from "./config.js";
 import { CLI_NAME, DEFAULT_API_URL } from "./constants.js";
-import { McpstackClient } from "./client.js";
+import { EmcyClient } from "./client.js";
 import { tryOpenBrowser } from "./open-browser.js";
 import { printInfo, printSuccess, printWarning } from "./output.js";
 import { z } from "zod";
@@ -40,7 +40,7 @@ const tokenResponseSchema = z.object({
 });
 
 export async function login(options: GlobalOptions): Promise<void> {
-  const client = await McpstackClient.create(options);
+  const client = await EmcyClient.create(options);
   const config = cliConfigSchema.parse(
     await client.request<CliConfigResponse>("/api/v1/cli/config", { noAuth: true }),
   );
@@ -80,7 +80,7 @@ export async function login(options: GlobalOptions): Promise<void> {
     await setSecret("refreshToken", token.refresh_token);
   }
 
-  const authedClient = await McpstackClient.create(options);
+  const authedClient = await EmcyClient.create(options);
   const organization = await authedClient.syncDefaultOrganization();
   printSuccess(`Signed in. Organization: ${organization.name ?? organization.id}.`);
 }
@@ -107,7 +107,7 @@ export async function status(options: GlobalOptions): Promise<void> {
   console.log(`Auth: ${config.auth?.type ?? "(none)"}`);
 
   try {
-    const client = await McpstackClient.create(options);
+    const client = await EmcyClient.create(options);
     const organization = await client.syncDefaultOrganization();
     console.log(`Organization: ${organization.name ?? organization.id}`);
   } catch (error) {
@@ -128,12 +128,12 @@ export async function status(options: GlobalOptions): Promise<void> {
 }
 
 export async function serviceAccountLogin(options: GlobalOptions & { key?: string }): Promise<void> {
-  const apiKey = options.key ?? process.env.MCPSTACK_API_KEY;
+  const apiKey = options.key ?? process.env.AGENETIX_API_KEY;
   if (!apiKey) {
-    throw new Error("Provide --key <api-key> or set MCPSTACK_API_KEY.");
+    throw new Error("Provide --key <api-key> or set AGENETIX_API_KEY.");
   }
 
-  const apiUrl = options.apiUrl ?? process.env.MCPSTACK_API_URL ?? DEFAULT_API_URL;
+  const apiUrl = options.apiUrl ?? process.env.AGENETIX_API_URL ?? DEFAULT_API_URL;
   const clientId = apiKey.slice(0, apiKey.lastIndexOf("_"));
 
   await saveConfig({
@@ -145,7 +145,7 @@ export async function serviceAccountLogin(options: GlobalOptions & { key?: strin
   });
   await setSecret("apiKey", apiKey);
 
-  const client = await McpstackClient.create(options);
+  const client = await EmcyClient.create(options);
   const organization = await client.syncDefaultOrganization();
   printSuccess(`Stored service-account login. Organization: ${organization.name ?? organization.id}.`);
 }
@@ -155,7 +155,7 @@ export async function serviceAccountLogout(options: GlobalOptions): Promise<void
 }
 
 export async function whoami(options: GlobalOptions): Promise<unknown> {
-  const client = await McpstackClient.create(options);
+  const client = await EmcyClient.create(options);
   return client.request("/api/v1/cli/whoami");
 }
 

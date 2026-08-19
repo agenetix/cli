@@ -4,9 +4,9 @@ import { dirname, join } from "node:path";
 import { CLI_NAME } from "./constants.js";
 import type { ConfigFile } from "./types.js";
 
-const configPath = join(homedir(), ".config", "mcpstack", "config.json");
-const fallbackSecretPath = join(homedir(), ".config", "mcpstack", "secrets.json");
-const secretService = "mcpstack";
+const configPath = join(homedir(), ".config", "agenetix", "config.json");
+const fallbackSecretPath = join(homedir(), ".config", "agenetix", "secrets.json");
+const secretService = "agenetix";
 const secretAccountPrefix = "current";
 
 type SecretMap = Record<string, string>;
@@ -131,7 +131,7 @@ async function loadKeytar(): Promise<KeytarModule | null> {
 }
 
 function isKeychainDisabled(): boolean {
-  const configured = process.env.MCPSTACK_DISABLE_KEYCHAIN?.trim().toLowerCase();
+  const configured = process.env.AGENETIX_DISABLE_KEYCHAIN?.trim().toLowerCase();
   return configured === "1" || configured === "true" || configured === "yes";
 }
 

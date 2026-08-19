@@ -2,7 +2,7 @@
 import { createRequire } from "node:module";
 import { Command } from "commander";
 import { registerCommands } from "./commands.js";
-import { McpstackHttpError } from "./client.js";
+import { EmcyHttpError } from "./client.js";
 import { CLI_NAME } from "./constants.js";
 import { printError } from "./output.js";
 
@@ -39,7 +39,7 @@ try {
     }
   }
 
-  if (error instanceof McpstackHttpError) {
+  if (error instanceof EmcyHttpError) {
     printError(error.message);
     if (program.opts().debugHttp && error.body !== undefined) {
       console.error(JSON.stringify(error.body, null, 2));
