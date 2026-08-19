@@ -20,6 +20,19 @@ describe("agenetix command surface", () => {
     expect(pkg.bin).toEqual({ agenetix: "dist/index.js" });
   });
 
+  it("does not ship the deprecated keytar/prebuild-install stack", () => {
+    const pkg = JSON.parse(
+      readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../package.json"), "utf8"),
+    ) as {
+      dependencies?: Record<string, string>;
+      optionalDependencies?: Record<string, string>;
+    };
+
+    expect(pkg.dependencies?.keytar).toBeUndefined();
+    expect(pkg.optionalDependencies?.keytar).toBeUndefined();
+    expect(pkg.optionalDependencies?.["@napi-rs/keyring"]).toBeDefined();
+  });
+
   it("registers the primary command groups", () => {
     const program = new Command();
     registerCommands(program);

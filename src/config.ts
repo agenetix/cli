@@ -10,13 +10,16 @@ const secretService = "mcpstack";
 const secretAccountPrefix = "current";
 
 type SecretMap = Record<string, string>;
-type KeytarModule = {
-  getPassword(service: string, account: string): Promise<string | null>;
-  setPassword(service: string, account: string, password: string): Promise<void>;
-  deletePassword(service: string, account: string): Promise<boolean>;
+type KeyringEntry = {
+  getPassword(): string | null;
+  setPassword(password: string): void;
+  deletePassword(): boolean;
+};
+type KeyringModule = {
+  Entry: new (service: string, account: string) => KeyringEntry;
 };
 
-let keytarPromise: Promise<KeytarModule | null> | undefined;
+let keyringPromise: Promise<KeyringModule | null> | undefined;
 
 export async function loadConfig(): Promise<ConfigFile | undefined> {
   try {
@@ -63,11 +66,15 @@ export async function setActiveOrganization(orgId: string): Promise<void> {
 
 export async function getSecret(key: string): Promise<string | undefined> {
   const account = getSecretAccount(key);
-  const keytar = await loadKeytar();
-  if (keytar) {
-    const value = await keytar.getPassword(secretService, account);
-    if (value) {
-      return value;
+  const entry = await loadKeychainEntry(account);
+  if (entry) {
+    try {
+      const value = entry.getPassword();
+      if (value) {
+        return value;
+      }
+    } catch {
+      // Fall through to the local secrets file if the keychain entry is missing or unreadable.
     }
   }
 
@@ -77,10 +84,14 @@ export async function getSecret(key: string): Promise<string | undefined> {
 
 export async function setSecret(key: string, value: string): Promise<void> {
   const account = getSecretAccount(key);
-  const keytar = await loadKeytar();
-  if (keytar) {
-    await keytar.setPassword(secretService, account, value);
-    return;
+  const entry = await loadKeychainEntry(account);
+  if (entry) {
+    try {
+      entry.setPassword(value);
+      return;
+    } catch {
+      // Fall through to the local secrets file if the OS keychain rejects the write.
+    }
   }
 
   const secrets = await loadFallbackSecrets();
@@ -90,9 +101,13 @@ export async function setSecret(key: string, value: string): Promise<void> {
 
 export async function deleteSecret(key: string): Promise<void> {
   const account = getSecretAccount(key);
-  const keytar = await loadKeytar();
-  if (keytar) {
-    await keytar.deletePassword(secretService, account);
+  const entry = await loadKeychainEntry(account);
+  if (entry) {
+    try {
+      entry.deletePassword();
+    } catch {
+      // Ignore missing keychain entries so logout can still clear the local fallback.
+    }
   }
 
   const secrets = await loadFallbackSecrets();
@@ -119,15 +134,28 @@ function getSecretAccount(key: string): string {
   return `${secretAccountPrefix}:${key}`;
 }
 
-async function loadKeytar(): Promise<KeytarModule | null> {
+async function loadKeychainEntry(account: string): Promise<KeyringEntry | null> {
+  const keyring = await loadKeyring();
+  if (!keyring) {
+    return null;
+  }
+
+  try {
+    return new keyring.Entry(secretService, account);
+  } catch {
+    return null;
+  }
+}
+
+async function loadKeyring(): Promise<KeyringModule | null> {
   if (isKeychainDisabled()) {
     return null;
   }
 
-  keytarPromise ??= import("keytar")
-    .then((module) => module.default as KeytarModule)
+  keyringPromise ??= import("@napi-rs/keyring")
+    .then((module) => module)
     .catch(() => null);
-  return keytarPromise;
+  return keyringPromise;
 }
 
 function isKeychainDisabled(): boolean {
